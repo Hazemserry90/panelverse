@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".splashscreen">
+
+    <!-- Full-screen GIF -->
+    <pl.droidsonroids.gif.GifImageView
+        android:id="@+id/GIF"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/ichigo"
+        android:scaleType="centerCrop"/>
+
+    <!-- Full-screen dark scrim so text is always readable -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000"/>
+
+    <!-- Centered branding — floats over the GIF, no box, no card -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingStart="40dp"
+        android:paddingEnd="40dp">
+
+        <!-- App name -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MangaVerse"
+            android:textColor="@color/white"
+            android:textSize="42sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:maxLines="1"
+            android:includeFontPadding="false"
+            android:shadowColor="#CC000000"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="12"/>
+
+        <!-- Purple accent line -->
+        <View
+            android:layout_width="56dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="14dp"
+            android:background="@color/accent_purple"/>
+
+        <!-- Subtitle -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Manga · Comics · Universe"
+            android:textColor="#CCffffff"
+            android:textSize="14sp"
+            android:letterSpacing="0.10"
+            android:gravity="center"/>
+
+    </LinearLayout>
+
+    <!-- Slim progress bar pinned to very bottom -->
+    <ProgressBar
+        android:layout_width="120dp"
+        android:layout_height="3dp"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="52dp"
+        android:indeterminate="true"
+        android:indeterminateTint="@color/accent_purple"/>
+
+</FrameLayout>

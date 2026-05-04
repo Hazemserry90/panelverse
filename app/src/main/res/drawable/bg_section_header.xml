@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    bg_section_header.xml
+    Section header label background:
+      • accent_orange at 15% alpha fill: #26FF6B35
+      • 12dp corner radius
+      • No stroke — keep it lightweight
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <solid android:color="#26FF6B35" />
+
+    <corners android:radius="12dp" />
+
+</shape>

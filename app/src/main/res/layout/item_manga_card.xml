@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Comic panel card: sharp corners, ink border, red spine accent -->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="14dp"
+    android:layout_marginEnd="14dp"
+    android:layout_marginTop="7dp"
+    android:layout_marginBottom="7dp">
+
+    <!-- Main card panel -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/bg_card"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="8dp"
+        app:strokeColor="@color/card_border"
+        app:strokeWidth="1dp">
+
+        <!-- Click ripple area -->
+        <LinearLayout
+            android:id="@+id/cardClickArea"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground"
+            android:minHeight="120dp">
+
+            <!-- Red ink spine bar -->
+            <View
+                android:layout_width="5dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_ink_bar"/>
+
+            <!-- Cover image -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="82dp"
+                android:layout_height="116dp"
+                android:layout_margin="12dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="6dp"
+                app:strokeColor="@color/panel_border"
+                app:strokeWidth="1dp">
+
+                <ImageView
+                    android:id="@+id/mangaCover"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Manga cover"/>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Right content -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingTop="14dp"
+                android:paddingBottom="10dp"
+                android:paddingEnd="8dp"
+                android:gravity="top">
+
+                <!-- Title — bold, manga-style -->
+                <TextView
+                    android:id="@+id/mangaTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    android:letterSpacing="0.01"
+                    android:lineSpacingMultiplier="1.2"/>
+
+                <!-- Red ink underline — like manga title page accent -->
+                <View
+                    android:layout_width="28dp"
+                    android:layout_height="2dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@color/accent_ink"/>
+
+                <!-- Category badge — solid fill, comic label style -->
+                <TextView
+                    android:id="@+id/mangaCategory"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp"
+                    android:textColor="@color/white"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.10"
+                    android:background="@drawable/bg_tag_manga"/>
+
+                <!-- Spacer -->
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+
+                <!-- Favorite heart -->
+                <TextView
+                    android:id="@+id/mangaFavorite"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:text="&#x1F90D;"
+                    android:textSize="20sp"
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"/>
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+</FrameLayout>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    bg_chip_selected.xml
+    Selected filter chip:
+      • Gradient fill from accent_orange (#FF6B35) to gradient_end (#FF3CAC)
+      • 24dp corner radius (pill shape)
+      • No stroke
+    Uses a layer-list so the gradient is drawn inside the shape boundary.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Gradient layer clipped to the rounded rectangle -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="0"
+                android:startColor="#FFFF6B35"
+                android:endColor="#FFFF3CAC" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+
+</layer-list>

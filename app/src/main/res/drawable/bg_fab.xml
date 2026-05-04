@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    bg_fab.xml
+    Floating Action Button background:
+      • Perfect circle (oval shape)
+      • Solid accent_orange (#FF6B35) fill
+      • No stroke — FAB shadow is provided by MaterialButton elevation
+    Wrapped in a ripple for pressed / touch feedback.
+-->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#33FFFFFF">
+
+    <!-- Ripple mask clipped to the circle -->
+    <item android:id="@android:id/mask">
+        <shape android:shape="oval">
+            <solid android:color="@color/white" />
+        </shape>
+    </item>
+
+    <!-- FAB fill -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/accent_orange" />
+        </shape>
+    </item>
+
+</ripple>

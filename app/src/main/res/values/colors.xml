@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Light mode — cream/paper like a manga volume page -->
+    <color name="bg_dark">#FFFFF9F0</color>
+    <color name="bg_card">#FFFFFFFF</color>
+    <color name="bg_section">#FFF5EFE6</color>
+    <color name="bg_elevated">#FFEDE6DA</color>
+
+    <!-- Accents -->
+    <color name="accent_orange">#FFFF6B35</color>
+    <color name="accent_purple">#FF6B3FEF</color>
+    <color name="accent_red">#FFDD1128</color>
+    <color name="accent_gold">#FFB8860B</color>
+    <color name="accent_blue">#FF1565C0</color>
+    <color name="accent_ink">#FFDD1128</color>
+    <color name="gradient_start">#FFDD1128</color>
+    <color name="gradient_end">#FFFF6B35</color>
+
+    <!-- Light mode text — near-black ink -->
+    <color name="text_primary">#FF0A0A14</color>
+    <color name="text_secondary">#FF4A4868</color>
+    <color name="text_muted">#FF9896BB</color>
+
+    <!-- Light mode chrome -->
+    <color name="divider">#FFE0D8CC</color>
+    <color name="card_border">#FFCCC4B8</color>
+    <color name="panel_border">#FF998C80</color>
+
+    <!-- Category tags -->
+    <color name="tag_manga">#FFDD1128</color>
+    <color name="tag_marvel">#FFE53935</color>
+    <color name="tag_dc">#FF1565C0</color>
+    <color name="tag_invincible">#FF00897B</color>
+
+    <!-- Bottom nav -->
+    <color name="bottom_nav_bg">#FFFFF9F0</color>
+    <color name="bottom_nav_selected">#FFDD1128</color>
+    <color name="bottom_nav_unselected">#FF9896BB</color>
+</resources>

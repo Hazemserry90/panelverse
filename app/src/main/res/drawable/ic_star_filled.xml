@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ic_star_filled.xml
+    Filled star icon in accent_orange (#FF6B35).
+    Canvas: 24 × 24 dp  |  ViewBox: 0 0 24 24
+    Path: standard 5-point star centred at (12, 12).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!--
+        5-point star path:
+        Start at the top point, draw alternating outer (R=9) and inner (R=3.8)
+        vertices at 72° intervals, beginning at -90° (top).
+        Outer vertices: (12, 3), (20.56, 9.5), (17.35, 19.5), (6.65, 19.5), (3.44, 9.5)
+        Inner vertices: (14.47, 6.45), (18.88, 13.48), (12, 17.02), (5.12, 13.48), (9.53, 6.45)
+    -->
+    <path
+        android:fillColor="#FFFF6B35"
+        android:pathData="
+            M12,3
+            L14.47,6.45
+            L20.56,9.5
+            L17.35,13.48
+            L17.88,19.5
+            L12,17.02
+            L6.12,19.5
+            L6.65,13.48
+            L3.44,9.5
+            L9.53,6.45
+            Z" />
+
+</vector>

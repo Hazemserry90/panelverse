@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vertical red ink bar used on card left side, like a panel spine -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:topLeftRadius="10dp" android:bottomLeftRadius="10dp"/>
+    <gradient
+        android:startColor="@color/accent_ink"
+        android:endColor="#AAFF1F3A"
+        android:angle="270"/>
+</shape>

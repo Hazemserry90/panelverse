@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Diagonal stripe pattern — manga speed/action lines feel -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/bg_dark"/>
+        </shape>
+    </item>
+    <!-- Diagonal stripe overlay 1 -->
+    <item>
+        <rotate
+            android:fromDegrees="45"
+            android:pivotX="50%"
+            android:pivotY="50%">
+            <shape android:shape="rectangle">
+                <gradient
+                    android:startColor="#08FFFFFF"
+                    android:centerColor="#00FFFFFF"
+                    android:endColor="#08FFFFFF"
+                    android:angle="0"
+                    android:gradientRadius="200dp"
+                    android:type="sweep"/>
+            </shape>
+        </rotate>
+    </item>
+</layer-list>

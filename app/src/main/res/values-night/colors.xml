@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Deep ink-black manga backgrounds -->
+    <color name="bg_dark">#FF050508</color>
+    <color name="bg_card">#FF0E0E16</color>
+    <color name="bg_section">#FF161620</color>
+    <color name="bg_elevated">#FF1E1E2C</color>
+
+    <!-- Manga ink accents — bold red is THE manga color -->
+    <color name="accent_orange">#FFFF6B35</color>
+    <color name="accent_purple">#FFB06AFF</color>
+    <color name="accent_red">#FFFF1F3A</color>
+    <color name="accent_gold">#FFFFD60A</color>
+    <color name="accent_blue">#FF4DB8FF</color>
+    <color name="accent_ink">#FFFF1F3A</color>
+    <color name="gradient_start">#FFFF1F3A</color>
+    <color name="gradient_end">#FFFF6B35</color>
+
+    <!-- Crisp manga text — like ink on white paper, inverted -->
+    <color name="text_primary">#FFF0EEF8</color>
+    <color name="text_secondary">#FF8A88AA</color>
+    <color name="text_muted">#FF3E3C58</color>
+
+    <!-- Panel borders — subtle but present like manga page gutters -->
+    <color name="divider">#FF1A1828</color>
+    <color name="card_border">#FF2A2840</color>
+    <color name="panel_border">#FF252338</color>
+
+    <!-- Category tag colors -->
+    <color name="tag_manga">#FFFF1F3A</color>
+    <color name="tag_marvel">#FFE53935</color>
+    <color name="tag_dc">#FF1E88E5</color>
+    <color name="tag_invincible">#FF00BFA5</color>
+
+    <!-- Bottom nav -->
+    <color name="bottom_nav_bg">#FF08080F</color>
+    <color name="bottom_nav_selected">#FFFF1F3A</color>
+    <color name="bottom_nav_unselected">#FF3A3855</color>
+</resources>

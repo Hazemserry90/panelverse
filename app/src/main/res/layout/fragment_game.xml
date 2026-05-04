@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true"
+    tools:context=".GameFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp"
+        android:paddingTop="72dp"
+        android:paddingBottom="48dp">
+
+        <!-- App icon badge -->
+        <TextView
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:text="📚"
+            android:textSize="44sp"
+            android:gravity="center"
+            android:background="@drawable/bg_featured_card"/>
+
+        <!-- Welcome title -->
+        <TextView
+            android:id="@+id/login"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Welcome Back"
+            android:textColor="@color/text_primary"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:gravity="center"/>
+
+        <!-- Subtitle -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="40dp"
+            android:text="Sign in to your MangaVerse account"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:gravity="center"/>
+
+        <!-- Username / email field -->
+        <EditText
+            android:id="@+id/username"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@drawable/bg_input_field"
+            android:hint="Email or Username"
+            android:textColorHint="@color/text_muted"
+            android:textColor="@color/text_primary"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:drawableStart="@drawable/baseline_account_circle_24"
+            android:drawablePadding="14dp"
+            android:inputType="textEmailAddress"/>
+
+        <!-- Password field wrapped in TextInputLayout for toggle -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_input_field"
+            app:passwordToggleEnabled="true"
+            app:passwordToggleTint="@color/accent_purple"
+            app:boxBackgroundMode="none">
+
+            <EditText
+                android:id="@+id/password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:hint="Password"
+                android:inputType="textPassword"
+                android:textColorHint="@color/text_muted"
+                android:textColor="@color/text_primary"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:drawableStart="@drawable/baseline_key_24"
+                android:drawablePadding="14dp"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Attempts warning -->
+        <TextView
+            android:id="@+id/attemptsWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text=""
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone"/>
+
+        <!-- Lockout message -->
+        <TextView
+            android:id="@+id/lockoutMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:text=""
+            android:textColor="@color/accent_red"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone"/>
+
+        <!-- Login button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ingame"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="28dp"
+            android:text="LOGIN"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            app:backgroundTint="@color/accent_purple"
+            app:cornerRadius="16dp"/>
+
+        <!-- Forgot password link -->
+        <TextView
+            android:id="@+id/Forgetpassword"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="Forgot password?"
+            android:textColor="@color/accent_purple"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"/>
+
+    </LinearLayout>
+</ScrollView>
