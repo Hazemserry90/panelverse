@@ -138,6 +138,7 @@ class MangaAdapter(
             "Marvel"     -> R.drawable.bg_tag_marvel
             "DC"         -> R.drawable.bg_tag_dc
             "Invincible" -> R.drawable.bg_tag_invincible
+            "Comics"     -> R.drawable.bg_tag_comics
             else         -> R.drawable.bg_tag_manga
         }
         chip.setBackgroundResource(res)

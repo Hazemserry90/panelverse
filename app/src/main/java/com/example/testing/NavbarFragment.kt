@@ -35,6 +35,7 @@ class NavbarFragment : Fragment() {
             childFragmentManager.fragments.forEach { frag ->
                 when (frag) {
                     is HomeFragment      -> fragmentCache[R.id.homep]     = frag
+                    is AssistantFragment -> fragmentCache[R.id.ai]        = frag
                     is FavoritesFragment -> fragmentCache[R.id.favorites] = frag
                     is ProfileFragment   -> fragmentCache[R.id.profile]   = frag
                     is SettingsFragment  -> fragmentCache[R.id.settings]  = frag
@@ -45,6 +46,7 @@ class NavbarFragment : Fragment() {
         bottomNav.setOnItemSelectedListener { item ->
             val handled = when (item.itemId) {
                 R.id.homep      -> { showFragment(R.id.homep)      { HomeFragment()      }; true }
+                R.id.ai         -> { showFragment(R.id.ai)         { AssistantFragment() }; true }
                 R.id.favorites  -> { showFragment(R.id.favorites)  { FavoritesFragment() }; true }
                 R.id.profile    -> { showFragment(R.id.profile)    { ProfileFragment()   }; true }
                 R.id.settings   -> { showFragment(R.id.settings)   { SettingsFragment()  }; true }

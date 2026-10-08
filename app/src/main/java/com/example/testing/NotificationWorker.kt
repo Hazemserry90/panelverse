@@ -24,10 +24,10 @@ class NotificationWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
         )
         private val MESSAGES = arrayOf(
             "Check out the latest manga and comics updates!",
-            "Pick up where you left off in MangaVerse.",
-            "New arcs and battles await in MangaVerse!",
+            "Pick up where you left off in PanelVerse.",
+            "New arcs and battles await in PanelVerse!",
             "Fresh chapters added to your favorite series.",
-            "New manga titles have been added to MangaVerse!"
+            "New manga titles have been added to PanelVerse!"
         )
     }
 

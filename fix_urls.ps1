@@ -1,0 +1,25 @@
+$file = 'app\src\main\java\com\example\testing\HomeFragment.kt'
+$content = Get-Content $file -Raw
+
+$content = $content -replace 'https://readallcomics\.com/x-men-blue', 'https://readcomicsonline.ru/comic/x-men-blue'
+$content = $content -replace 'https://readallcomics\.com/venom-2018', 'https://readcomicsonline.ru/comic/venom-2018'
+$content = $content -replace 'https://readallcomics\.com/invincible-iron-man-2022', 'https://readcomicsonline.ru/comic/invincible-iron-man-2022'
+$content = $content -replace 'https://readallcomics\.com/avengers-2018', 'https://readcomicsonline.ru/comic/avengers-2018'
+$content = $content -replace 'https://readallcomics\.com/old-man-logan-2016', 'https://readcomicsonline.ru/comic/old-man-logan-2015'
+$content = $content -replace 'https://readallcomics\.com/amazing-spider-man-2022', 'https://readcomicsonline.ru/comic/the-amazing-spiderman-2022'
+$content = $content -replace 'https://readallcomics\.com/deadpool-2024', 'https://readcomicsonline.ru/comic/deadpool-2018'
+$content = $content -replace 'https://readallcomics\.com/moon-knight-2021', 'https://readcomicsonline.ru/comic/moon-knight-2021'
+$content = $content -replace 'https://readallcomics\.com/secret-wars-2015', 'https://readcomicsonline.ru/comic/marvel-super-heroes-secret-wars-battleworld-2023'
+$content = $content -replace 'https://readallcomics\.com/batman-the-long-halloween', 'https://readcomicsonline.ru/comic/batman-the-long-halloween'
+$content = $content -replace 'https://readallcomics\.com/superman-red-son', 'https://readcomicsonline.ru/comic/superman-red-son'
+$content = $content -replace 'https://readallcomics\.com/wonder-woman-rebirth', 'https://readcomicsonline.ru/comic/wonder-woman-rebirth'
+$content = $content -replace 'https://readallcomics\.com/flashpoint-2011', 'https://readcomicsonline.ru/comic/flashpoint-2011'
+$content = $content -replace 'https://readallcomics\.com/injustice-gods-among-us-year-one', 'https://readcomicsonline.ru/comic/injustice-gods-among-us-year-one'
+$content = $content -replace 'https://readallcomics\.com/crisis-on-infinite-earths', 'https://readcomicsonline.ru/comic/crisis-on-infinite-earths'
+$content = $content -replace 'https://readallcomics\.com/invincible', 'https://readcomicsonline.ru/comic/invincible-2005'
+$content = $content -replace 'https://readallcomics\.com/star-wars-darth-vader-2020', 'https://readcomicsonline.ru/comic/star-wars-darth-vader-2020'
+$content = $content -replace 'https://readallcomics\.com/transformers-2019', 'https://readcomicsonline.ru/comic/transformers-2019'
+$content = $content -replace 'https://readallcomics\.com/teenage-mutant-ninja-turtles', 'https://readcomicsonline.ru/comic/teenage-mutant-ninja-turtles'
+
+Set-Content $file $content -NoNewline
+Write-Host 'All URLs fixed!'

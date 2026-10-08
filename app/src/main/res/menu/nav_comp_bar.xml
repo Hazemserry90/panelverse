@@ -3,6 +3,9 @@
     <item android:title="Home"
         android:icon="@drawable/baseline_home_24"
         android:id="@+id/homep"/>
+    <item android:title="AI"
+        android:icon="@drawable/ic_ai"
+        android:id="@+id/ai"/>
     <item android:title="Saved"
         android:icon="@android:drawable/btn_star_big_off"
         android:id="@+id/favorites"/>

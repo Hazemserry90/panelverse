@@ -25,7 +25,7 @@ class HomeFragment : Fragment() {
     private var favListener: ValueEventListener? = null
 
     companion object {
-        private val CATEGORIES = arrayOf("All", "Manga", "Marvel", "DC", "Invincible")
+        private val CATEGORIES = arrayOf("All", "Manga", "Marvel", "DC", "Invincible", "Comics")
 
         // BUG 6 FIX: catalogue is built once at class level — not per-instance.
         // Previously mangaList was an instance var and re-built every time NavbarFragment
@@ -38,159 +38,243 @@ class HomeFragment : Fragment() {
                 // ── Japanese Manga ────────────────────────────────────────────
                 MangaItem(
                     "dragonball", "Dragon Ball", R.drawable.dragonball_cover,
-                    coverUrl = "https://upload.wikimedia.org/wikipedia/en/f/f2/Dragon_Ball_volume_1.jpg",
-                    "https://mangareader.to/read/dragon-ball-163/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/dragon-ball.3338", category = "Manga"
                 ),
                 MangaItem(
                     "naruto", "Naruto", R.drawable.naruto_cover,
-                    coverUrl = "https://upload.wikimedia.org/wikipedia/en/9/94/NarutoCoverTankobon1.jpg",
-                    "https://mangareader.to/read/naruto-colored-edition-55924/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/naruto.1205", category = "Manga"
                 ),
                 MangaItem(
                     "bleach", "Bleach", R.drawable.bleach_cover,
-                    coverUrl = "https://upload.wikimedia.org/wikipedia/en/7/77/Bleach_volume_1_cover.jpg",
-                    "https://mangareader.to/read/bleach-color-edition-55958/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/bleach.47", category = "Manga"
                 ),
                 MangaItem(
                     "onepiece", "One Piece", R.drawable.cover_onepiece,
-                    coverUrl = "",
-                    "https://mangareader.to/read/one-piece-colored-edition-1/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/one-piece.49", category = "Manga"
                 ),
                 MangaItem(
                     "aot", "Attack on Titan", R.drawable.cover_aot,
-                    coverUrl = "",
-                    "https://mangareader.to/read/shingeki-no-kyojin-190/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/attack-on-titan.842", category = "Manga"
                 ),
                 MangaItem(
                     "demonslayer", "Demon Slayer", R.drawable.cover_demonslayer,
-                    coverUrl = "",
-                    "https://mangareader.to/read/kimetsu-no-yaiba-191/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/kimetsu-no-yaiba.16355", category = "Manga"
                 ),
                 MangaItem(
                     "deathnote", "Death Note", R.drawable.cover_deathnote,
-                    coverUrl = "",
-                    "https://mangareader.to/read/death-note-201/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/death-note.6685", category = "Manga"
                 ),
                 MangaItem(
                     "tokyoghoul", "Tokyo Ghoul", R.drawable.cover_tokyoghoul,
-                    coverUrl = "",
-                    "https://mangareader.to/read/tokyo-ghoul-199/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/tokyo-ghoul.3476", category = "Manga"
                 ),
                 MangaItem(
                     "jjk", "Jujutsu Kaisen", R.drawable.cover_jjk,
-                    coverUrl = "",
-                    "https://mangareader.to/read/jujutsu-kaisen-187/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/jujutsu-kaisen.20224", category = "Manga"
                 ),
                 MangaItem(
                     "hxh", "Hunter x Hunter", R.drawable.cover_hxh,
-                    coverUrl = "",
-                    "https://mangareader.to/read/hunter-x-hunter-197/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/hunter-x-hunter.3474", category = "Manga"
                 ),
                 MangaItem(
                     "mha", "My Hero Academia", R.drawable.cover_mha,
-                    coverUrl = "",
-                    "https://mangareader.to/read/boku-no-hero-academia-189/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/boku-no-hero-academia.551", category = "Manga"
                 ),
                 MangaItem(
                     "fma", "Fullmetal Alchemist", R.drawable.cover_fma,
-                    coverUrl = "",
-                    "https://mangareader.to/read/fullmetal-alchemist-193/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/fullmetal-alchemist.3792", category = "Manga"
                 ),
                 MangaItem(
                     "opm", "One Punch Man", R.drawable.cover_opm,
-                    coverUrl = "",
-                    "https://mangareader.to/read/one-punch-man-196/en/chapter-1", "Manga"
+                    url = "https://mangakatana.com/manga/onepunch-man.437", category = "Manga"
+                ),
+                MangaItem(
+                    "dbs", "Dragon Ball Super", R.drawable.cover_dbs,
+                    url = "https://mangakatana.com/manga/dragon-ball-super.17794", category = "Manga"
+                ),
+                MangaItem(
+                    "chainsawman", "Chainsaw Man", R.drawable.cover_chainsawman,
+                    url = "https://mangakatana.com/manga/chainsaw-man.21890", category = "Manga"
+                ),
+                MangaItem(
+                    "bluelock", "Blue Lock", R.drawable.cover_bluelock,
+                    url = "https://mangakatana.com/manga/blue-lock.22750", category = "Manga"
+                ),
+                MangaItem(
+                    "vinlandsaga", "Vinland Saga", R.drawable.cover_vinlandsaga,
+                    url = "https://mangakatana.com/manga/vinland-saga.177", category = "Manga"
+                ),
+                MangaItem(
+                    "berserk", "Berserk", R.drawable.cover_berserk,
+                    url = "https://mangakatana.com/manga/berserk.1087", category = "Manga"
+                ),
+                MangaItem(
+                    "sololeveling", "Solo Leveling", R.drawable.cover_sololeveling,
+                    url = "https://mangakatana.com/manga/solo-leveling.21708", category = "Manga"
+                ),
+                MangaItem(
+                    "spyxfamily", "Spy x Family", R.drawable.cover_spyxfamily,
+                    url = "https://mangakatana.com/manga/spy-x-family.22629", category = "Manga"
+                ),
+                MangaItem(
+                    "bleachunforgivens", "Bleach: The Unforgivens", R.drawable.cover_bleachunforgivens,
+                    url = "https://mangakatana.com/manga/bleach-the-unforgivens.21739", category = "Manga"
+                ),
+                MangaItem(
+                    "bleachtybw", "Bleach: Thousand-Year Blood War", R.drawable.cover_bleachtybw,
+                    url = "https://mangakatana.com/manga/bleach.47", category = "Manga"
                 ),
 
                 // ── Marvel ────────────────────────────────────────────────────
                 MangaItem(
-                    "xmen", "X-Men '97", R.drawable.cover_xmen,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/X-Men-97", "Marvel"
+                    "xmen", "X-Men: Blue", R.drawable.cover_xmen,
+                    url = "https://readcomicsonline.ru/comic/x-men-blue", category = "Marvel"
                 ),
                 MangaItem(
                     "venom", "Venom (2018)", R.drawable.cover_venom,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Venom-2018", "Marvel"
+                    url = "https://readcomicsonline.ru/comic/venom-2018", category = "Marvel"
                 ),
                 MangaItem(
                     "ironman", "Invincible Iron Man", R.drawable.cover_ironman,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Invincible-Iron-Man", "Marvel"
+                    url = "https://readcomicsonline.ru/comic/invincible-iron-man-2022", category = "Marvel"
                 ),
                 MangaItem(
                     "avengers", "Avengers (2018)", R.drawable.cover_avengers,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Avengers-2018", "Marvel"
+                    url = "https://readcomicsonline.ru/comic/avengers-2018", category = "Marvel"
                 ),
                 MangaItem(
                     "wolverine", "Old Man Logan", R.drawable.cover_wolverine,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Old-Man-Logan", "Marvel"
+                    url = "https://readcomicsonline.ru/comic/old-man-logan-2015", category = "Marvel"
                 ),
                 MangaItem(
                     "spiderman", "Spider-Man", R.drawable.spiderman_cover,
-                    coverUrl = "https://upload.wikimedia.org/wikipedia/en/a/a9/AmazingSpider-Man_v2_-36.jpg",
-                    "https://readcomiconline.li/Comic/Spider-Man-Black-Suit-Blood", "Marvel"
+                    url = "https://readcomicsonline.ru/comic/the-amazing-spiderman-2022", category = "Marvel"
                 ),
                 MangaItem(
                     "deadpool", "Deadpool", R.drawable.deadpool_cover,
-                    coverUrl = "https://upload.wikimedia.org/wikipedia/en/0/07/Deadpool_vol_5_1.png",
-                    "https://readcomiconline.li/Comic/Deadpool-Kills-the-Marvel-Universe", "Marvel"
+                    url = "https://readcomicsonline.ru/comic/deadpool-2018", category = "Marvel"
                 ),
                 MangaItem(
                     "moonknight", "Moon Knight", R.drawable.moonknight,
-                    coverUrl = "https://upload.wikimedia.org/wikipedia/en/2/25/Moon_Knight_Vol_1_1.jpg",
-                    "https://readcomiconline.li/Comic/Moon-Knight-2016", "Marvel"
+                    url = "https://readcomicsonline.ru/comic/moon-knight-2021", category = "Marvel"
                 ),
                 MangaItem(
                     "secretwars", "Secret Wars", R.drawable.secretwars,
-                    coverUrl = "https://upload.wikimedia.org/wikipedia/en/e/e9/SecretWars1.png",
-                    "https://readcomiconline.li/Comic/Secret-Wars", "Marvel"
+                    url = "https://readcomicsonline.ru/comic/marvel-super-heroes-secret-wars-battleworld-2023", category = "Marvel"
+                ),
+                MangaItem(
+                    "thor", "Thor (2020)", R.drawable.cover_thor,
+                    url = "https://readcomicsonline.ru/comic/thor-2020", category = "Marvel"
+                ),
+                MangaItem(
+                    "fantasticfour", "Fantastic Four (2018)", R.drawable.cover_fantasticfour,
+                    url = "https://readcomicsonline.ru/comic/fantastic-four-2018", category = "Marvel"
+                ),
+                MangaItem(
+                    "immortalhulk", "Immortal Hulk", R.drawable.cover_immortalhulk,
+                    url = "https://readcomicsonline.ru/comic/immortal-hulk-2018", category = "Marvel"
+                ),
+                MangaItem(
+                    "blackpanther", "Black Panther (2018)", R.drawable.cover_blackpanther,
+                    url = "https://readcomicsonline.ru/comic/black-panther-2018", category = "Marvel"
+                ),
+                MangaItem(
+                    "captainamerica", "Captain America (2018)", R.drawable.cover_captainamerica,
+                    url = "https://readcomicsonline.ru/comic/captain-america-2018", category = "Marvel"
+                ),
+                MangaItem(
+                    "doctorstrange", "Doctor Strange (2018)", R.drawable.cover_doctorstrange,
+                    url = "https://readcomicsonline.ru/comic/doctor-strange-2018", category = "Marvel"
+                ),
+                MangaItem(
+                    "guardians", "Guardians of the Galaxy (2017)", R.drawable.cover_guardians,
+                    url = "https://readcomicsonline.ru/comic/guardians-of-the-galaxy-2017", category = "Marvel"
+                ),
+                MangaItem(
+                    "daredevil", "Daredevil (2019)", R.drawable.cover_daredevil,
+                    url = "https://readcomicsonline.ru/comic/daredevil-2019", category = "Marvel"
+                ),
+                MangaItem(
+                    "gorr", "Gorr the God Butcher", R.drawable.cover_gorr,
+                    url = "https://readcomicsonline.ru/comic/thor-god-of-thunder-the-god-butcher-infinity-comic-2022", category = "Marvel"
                 ),
 
                 // ── DC ────────────────────────────────────────────────────────
                 MangaItem(
-                    "batman", "Batman: The Long Halloween", R.drawable.cover_batman,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Batman-The-Long-Halloween", "DC"
+                    "batman", "Batman: The Long Halloween Special", R.drawable.cover_batman,
+                    url = "https://readcomicsonline.ru/comic/batman-the-long-halloween-special-2021", category = "DC"
                 ),
                 MangaItem(
-                    "superman", "Superman: Red Son", R.drawable.cover_superman,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Superman-Red-Son", "DC"
+                    "superman", "Superman (2016)", R.drawable.cover_superman,
+                    url = "https://readcomicsonline.ru/comic/superman-2016", category = "DC"
                 ),
                 MangaItem(
-                    "wonderwoman", "Wonder Woman", R.drawable.cover_wonderwoman,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Wonder-Woman-2016", "DC"
+                    "flashpoint", "Flashpoint Beyond", R.drawable.cover_flashpoint,
+                    url = "https://readcomicsonline.ru/comic/flashpoint-beyond-2022", category = "DC"
                 ),
                 MangaItem(
-                    "flashpoint", "Flashpoint", R.drawable.cover_flashpoint,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Flashpoint-2011", "DC"
+                    "injustice", "Injustice 2", R.drawable.cover_injustice,
+                    url = "https://readcomicsonline.ru/comic/injustice-2-2017", category = "DC"
                 ),
                 MangaItem(
-                    "injustice", "Injustice: Gods Among Us", R.drawable.cover_injustice,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Injustice-Gods-Among-Us-Year-One", "DC"
+                    "dccrisis", "Crisis on Infinite Earths: Paragons Rising", R.drawable.cover_dccrisis,
+                    url = "https://readcomicsonline.ru/comic/crisis-on-infinite-earths-paragons-rising-the-deluxe-edition-2020", category = "DC"
                 ),
                 MangaItem(
-                    "dccrisis", "Crisis on Infinite Earths", R.drawable.cover_dccrisis,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Crisis-on-Infinite-Earths", "DC"
+                    "justiceleague", "Justice League (2016)", R.drawable.cover_justiceleague,
+                    url = "https://readcomicsonline.ru/comic/justice-league-2016", category = "DC"
+                ),
+                MangaItem(
+                    "theflash", "The Flash (2016)", R.drawable.cover_theflash,
+                    url = "https://readcomicsonline.ru/comic/the-flash-2016", category = "DC"
+                ),
+                MangaItem(
+                    "greenlantern", "Green Lantern (2021)", R.drawable.cover_greenlantern,
+                    url = "https://readcomicsonline.ru/comic/green-lantern-2021", category = "DC"
+                ),
+                MangaItem(
+                    "aquaman", "Aquaman (2016)", R.drawable.cover_aquaman,
+                    url = "https://readcomicsonline.ru/comic/aquaman-2016-rebirth", category = "DC"
+                ),
+                MangaItem(
+                    "teentitans", "Teen Titans (2016)", R.drawable.cover_teentitans,
+                    url = "https://readcomicsonline.ru/comic/teen-titans-2016", category = "DC"
+                ),
+                MangaItem(
+                    "nightwing", "Nightwing (2016)", R.drawable.cover_nightwing,
+                    url = "https://readcomicsonline.ru/comic/nightwing-2016", category = "DC"
+                ),
+                MangaItem(
+                    "sandman", "The Sandman (Deluxe Edition)", R.drawable.cover_sandman,
+                    url = "https://readcomicsonline.ru/comic/the-sandman-the-deluxe-edition-2020", category = "DC"
+                ),
+                MangaItem(
+                    "suicidesquad", "Suicide Squad (2016)", R.drawable.cover_suicidesquad,
+                    url = "https://readcomicsonline.ru/comic/suicide-squad-2016", category = "DC"
+                ),
+                MangaItem(
+                    "greenlanterncorps", "Green Lantern Corps (2025)", R.drawable.cover_greenlanterncorps,
+                    url = "https://readcomicsonline.ru/comic/green-lantern-corps-2025", category = "DC"
                 ),
 
                 // ── Invincible Universe ───────────────────────────────────────
                 MangaItem(
                     "invincible", "Invincible", R.drawable.cover_invincible,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/Invincible", "Invincible"
+                    url = "https://readcomicsonline.ru/comic/invincible-2005", category = "Invincible"
+                ),
+
+                // ── Comics ───────────────────────────────────────────────────
+                MangaItem(
+                    "starwars", "Star Wars: Darth Vader", R.drawable.cover_starwars,
+                    url = "https://readcomicsonline.ru/comic/star-wars-darth-vader-2020", category = "Comics"
                 ),
                 MangaItem(
-                    "walkingdead", "The Walking Dead", R.drawable.cover_walkingdead,
-                    coverUrl = "",
-                    "https://readcomiconline.li/Comic/The-Walking-Dead", "Invincible"
+                    "transformers", "Transformers", R.drawable.cover_transformers,
+                    url = "https://readcomicsonline.ru/comic/transformers-2019", category = "Comics"
+                ),
+                MangaItem(
+                    "tmnt", "Teenage Mutant Ninja Turtles", R.drawable.cover_tmnt,
+                    url = "https://readcomicsonline.ru/comic/teenage-mutant-ninja-turtles-2011", category = "Comics"
                 )
             )
         }
