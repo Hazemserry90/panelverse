@@ -101,6 +101,12 @@ Cover images belong to their respective publishers/owners and are used here for 
 
 ---
 
+## 🔒 Security
+
+Security-hardening measures and responsible-disclosure instructions are documented in [SECURITY.md](SECURITY.md). Short version: no secrets are committed, the Firebase database requires authentication, the in-app WebView only loads `http`/`https` (file access off, no JS bridge), external components are not exported, and cleartext traffic is disabled.
+
+---
+
 ## 👤 Author
 
 **Hazem Serry** — [@Hazemserry90](https://github.com/Hazemserry90)
