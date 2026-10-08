@@ -42,6 +42,14 @@ class ReaderActivity : AppCompatActivity() {
 
         currentUrl = url
 
+        // SECURITY: only allow web (http/https) URLs into the WebView.
+        val initialScheme = Uri.parse(url).scheme?.lowercase()
+        if (initialScheme != "http" && initialScheme != "https") {
+            Toast.makeText(this, "Unsupported link", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
         // Bind views
         webView           = findViewById(R.id.readerWebView)
         webProgress       = findViewById(R.id.webProgress)
@@ -59,19 +67,32 @@ class ReaderActivity : AppCompatActivity() {
         webView.settings.useWideViewPort    = true
         webView.settings.builtInZoomControls = true
         webView.settings.displayZoomControls = false
+        // SECURITY: never expose the local file system / content providers to web content.
+        webView.settings.allowFileAccess = false
+        webView.settings.allowContentAccess = false
 
         // ── WebViewClient: keep navigation inside the WebView ──────────────
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                // Return false → WebView handles the URL itself (stays in-app)
-                currentUrl = request.url.toString()
-                return false
+                // SECURITY: only http/https stay in the WebView; block every other scheme.
+                val scheme = request.url.scheme?.lowercase()
+                return if (scheme == "http" || scheme == "https") {
+                    currentUrl = request.url.toString()
+                    false
+                } else {
+                    true
+                }
             }
 
             @Suppress("OVERRIDE_DEPRECATION")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                currentUrl = url
-                return false
+                val scheme = Uri.parse(url).scheme?.lowercase()
+                return if (scheme == "http" || scheme == "https") {
+                    currentUrl = url
+                    false
+                } else {
+                    true
+                }
             }
 
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
