@@ -72,8 +72,8 @@ app/src/main/
 ### Steps
 1. Clone the repo:
    ```bash
-   git clone https://github.com/Hazemserry90/MangaVerse-updated-version-of-anime-app.git
-   cd MangaVerse-updated-version-of-anime-app
+   git clone https://github.com/Hazemserry90/panelverse.git
+   cd panelverse
    ```
 2. Create **`local.properties`** in the project root with your SDK path:
    ```properties
