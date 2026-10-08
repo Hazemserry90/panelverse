@@ -1,0 +1,7 @@
+# Keep helper scripts out of GitHub's language statistics
+*.ps1 linguist-detectable=false
+*.bat linguist-detectable=false
+
+# Treat generated/binary assets as non-diffable
+*.jpg binary
+*.png binary
