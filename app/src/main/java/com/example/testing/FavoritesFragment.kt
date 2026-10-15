@@ -31,9 +31,6 @@ class FavoritesFragment : Fragment() {
 
         // BUG 8 FIX: FavoritesFragment is now shown as a proper tab by NavbarFragment
         // (via show()/hide()). The back button is no longer needed for tab navigation.
-        // If it ever becomes a pushed fragment again, use:
-        //   requireParentFragment().childFragmentManager.popBackStack()
-        // NOT parentFragmentManager.popBackStack() which pops the Activity-level back stack.
         view.findViewById<TextView>(R.id.btnBack)?.setOnClickListener {
             // Delegate to the NavbarFragment to go back to Home tab
             (parentFragment as? NavbarFragment)?.switchToTab(R.id.homep)
@@ -63,9 +60,10 @@ class FavoritesFragment : Fragment() {
                     return
                 }
 
+                // FIX 5: MangaItem is immutable now — build the favourites with copies.
                 val favorites = HomeFragment.buildMangaCatalogue()
                     .filter { it.id in favIds }
-                    .onEach { it.isFavorite = true }
+                    .map { it.copy(isFavorite = true) }
 
                 if (favorites.isEmpty()) {
                     showEmpty("No favorites yet!\n❤️ Tap the heart on any title to save it here.")
@@ -97,7 +95,14 @@ class FavoritesFragment : Fragment() {
     private fun showList(items: List<MangaItem>) {
         emptyMessage.visibility = View.GONE
         recyclerView.visibility = View.VISIBLE
-        adapter = MangaAdapter(requireContext(), items)
-        recyclerView.adapter = adapter
+        // FIX 5: reuse one adapter instance and just swap its list.
+        val existing = adapter
+        if (existing == null) {
+            val created = MangaAdapter(requireContext(), items)
+            adapter = created
+            recyclerView.adapter = created
+        } else {
+            existing.setItems(items)
+        }
     }
 }

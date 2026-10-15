@@ -2,7 +2,9 @@ package com.example.testing
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.Worker
@@ -50,11 +52,29 @@ class NotificationWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                     .apply { description = "Periodic manga update reminders" }
             )
         }
+
+        // FIX 8: tapping the notification opens the app (was a no-op before).
+        val openIntent = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            // Bonus: pass the most recent title so a future deep-link can use it.
+            ReadingHistoryManager.getHistory(applicationContext).firstOrNull()?.let {
+                putExtra("open_title", it)
+            }
+        }
+        val contentIntent = PendingIntent.getActivity(
+            applicationContext,
+            notificationId,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            // FIX 8: proper monochrome small icon instead of android.R.drawable.ic_dialog_info
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(contentIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()

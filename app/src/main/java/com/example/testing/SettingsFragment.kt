@@ -1,5 +1,6 @@
 package com.example.testing
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -9,17 +10,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SwitchCompat
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequest
-import androidx.work.WorkManager
 import com.google.firebase.auth.FirebaseAuth
-import java.util.concurrent.TimeUnit
 
 class SettingsFragment : Fragment() {
 
@@ -27,7 +25,6 @@ class SettingsFragment : Fragment() {
         private const val PREF_FILE = "anime_app_prefs"
         private const val KEY_DARK_MODE = "dark_mode"
         private const val KEY_NOTIFICATIONS = "notifications_enabled"
-        private const val NOTIFICATION_WORK_TAG = "periodic_notification_work"
     }
 
     private lateinit var switchDarkMode: SwitchCompat
@@ -41,6 +38,23 @@ class SettingsFragment : Fragment() {
 
     // Guard flag to prevent listener firing during programmatic state set
     private var isInitializing = false
+
+    // FIX 1: request POST_NOTIFICATIONS from Settings too, so re-enabling the toggle on
+    // API 33+ actually schedules work instead of silently doing nothing.
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                NotificationHelper.schedule(requireContext())
+                Toast.makeText(requireContext(), "Notifications enabled", Toast.LENGTH_SHORT).show()
+            } else {
+                // Permission denied → keep the switch (and pref) off.
+                prefs.edit().putBoolean(KEY_NOTIFICATIONS, false).apply()
+                isInitializing = true
+                switchNotifications.isChecked = false
+                isInitializing = false
+                Toast.makeText(requireContext(), "Notifications permission denied", Toast.LENGTH_SHORT).show()
+            }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -106,7 +120,12 @@ class SettingsFragment : Fragment() {
         switchNotifications.setOnCheckedChangeListener { _, isChecked ->
             if (isInitializing) return@setOnCheckedChangeListener
             prefs.edit().putBoolean(KEY_NOTIFICATIONS, isChecked).apply()
-            if (isChecked) scheduleNotifications() else cancelNotifications()
+            if (!isChecked) {
+                NotificationHelper.cancel(requireContext())
+                Toast.makeText(requireContext(), "Notifications disabled", Toast.LENGTH_SHORT).show()
+            } else {
+                enableNotifications()
+            }
         }
 
         // Clear Reading History
@@ -131,24 +150,14 @@ class SettingsFragment : Fragment() {
 
     // ── Notifications ─────────────────────────────────────────────────────
 
-    private fun scheduleNotifications() {
-        val workRequest = PeriodicWorkRequest.Builder(
-            NotificationWorker::class.java,
-            6,
-            TimeUnit.HOURS
-        ).addTag(NOTIFICATION_WORK_TAG).build()
-
-        WorkManager.getInstance(requireContext()).enqueueUniquePeriodicWork(
-            NOTIFICATION_WORK_TAG,
-            ExistingPeriodicWorkPolicy.KEEP,
-            workRequest
-        )
-        Toast.makeText(requireContext(), "Notifications enabled", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun cancelNotifications() {
-        WorkManager.getInstance(requireContext()).cancelAllWorkByTag(NOTIFICATION_WORK_TAG)
-        Toast.makeText(requireContext(), "Notifications disabled", Toast.LENGTH_SHORT).show()
+    /** FIX 1: ask for permission first on API 33+, otherwise schedule directly. */
+    private fun enableNotifications() {
+        if (NotificationHelper.hasPermission(requireContext())) {
+            NotificationHelper.schedule(requireContext())
+            Toast.makeText(requireContext(), "Notifications enabled", Toast.LENGTH_SHORT).show()
+        } else {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     // ── Clear Reading History ─────────────────────────────────────────────
@@ -177,6 +186,8 @@ class SettingsFragment : Fragment() {
         val email = currentUser.email!!
         FirebaseAuth.getInstance().sendPasswordResetEmail(email)
             .addOnSuccessListener {
+                // FIX 3: guard against the fragment being detached before the callback.
+                if (!isAdded) return@addOnSuccessListener
                 Toast.makeText(
                     requireContext(),
                     "Password reset email sent to $email",
@@ -184,6 +195,7 @@ class SettingsFragment : Fragment() {
                 ).show()
             }
             .addOnFailureListener { e ->
+                if (!isAdded) return@addOnFailureListener
                 Toast.makeText(
                     requireContext(),
                     "Failed to send reset email: ${e.message}",

@@ -19,7 +19,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // FIX 10: enable R8 code + resource shrinking for release builds
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -27,11 +29,16 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        // FIX 14: Java 17 toolchain
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
+    }
+    buildFeatures {
+        // FIX 14: opt in to ViewBinding for new code (existing findViewById kept)
+        viewBinding = true
     }
 }
 
@@ -44,11 +51,11 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.database)
     implementation(libs.firebase.inappmessaging)
+    // FIX 7: exactly one WorkManager dependency (Kotlin artifact) from the version catalog
     implementation(libs.work.runtime)
     implementation("androidx.navigation:navigation-fragment-ktx:2.8.4")
     implementation("androidx.navigation:navigation-ui-ktx:2.8.4")
     implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.29")
-    implementation("androidx.work:work-runtime-ktx:2.8.0")
     implementation("io.coil-kt:coil:2.6.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

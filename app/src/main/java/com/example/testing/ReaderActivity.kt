@@ -13,6 +13,7 @@ import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 
 class ReaderActivity : AppCompatActivity() {
@@ -137,12 +138,17 @@ class ReaderActivity : AppCompatActivity() {
 
         // ── Load the URL ───────────────────────────────────────────────────
         webView.loadUrl(currentUrl)
-    }
 
-    // ── Physical back button ───────────────────────────────────────────────
-    @Suppress("OVERRIDE_DEPRECATION")
-    override fun onBackPressed() {
-        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
+        // FIX 9: use the modern OnBackPressedDispatcher instead of the deprecated
+        // Activity.onBackPressed() override.
+        onBackPressedDispatcher.addCallback(this) {
+            if (webView.canGoBack()) {
+                webView.goBack()
+            } else {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        }
     }
 
     override fun onPause() {

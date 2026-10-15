@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/gameFragment"
-        android:name="com.example.testing.GameFragment"
+        android:name="com.example.testing.LoginFragment"
         android:label="fragment_game"
         tools:layout="@layout/fragment_game" >
         <action
@@ -43,7 +43,7 @@
     </fragment>
     <fragment
         android:id="@+id/endgameFragment"
-        android:name="com.example.testing.EndgameFragment"
+        android:name="com.example.testing.SignupFragment"
         android:label="fragment_endgame"
         tools:layout="@layout/fragment_endgame" >
         <action

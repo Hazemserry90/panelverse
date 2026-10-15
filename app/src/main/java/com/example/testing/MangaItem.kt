@@ -7,5 +7,6 @@ data class MangaItem(
     val coverUrl: String = "",
     val url: String,
     val category: String,
-    var isFavorite: Boolean = false
+    // FIX 5: immutable so DiffUtil can detect favourite changes via equality.
+    val isFavorite: Boolean = false
 )

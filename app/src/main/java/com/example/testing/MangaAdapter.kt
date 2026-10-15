@@ -11,24 +11,35 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import coil.transform.RoundedCornersTransformation
 import com.google.firebase.auth.FirebaseAuth
 
+/**
+ * FIX 5: now a ListAdapter with DiffUtil instead of a plain adapter using
+ * notifyDataSetChanged(). Items are immutable, so the favourite state lives in
+ * freshly-copied list entries rather than in-place mutations.
+ */
 class MangaAdapter(
     private val context: Context,
     items: List<MangaItem>
-) : RecyclerView.Adapter<MangaAdapter.ViewHolder>() {
+) : ListAdapter<MangaItem, MangaAdapter.ViewHolder>(DIFF) {
 
-    private val masterList: MutableList<MangaItem> = items.toMutableList()
-    private var filteredList: MutableList<MangaItem> = masterList  // BUG 16 FIX: share the same list reference
+    /** Source of truth; the visible list is derived from it by applyFilters(). */
+    private var masterList: List<MangaItem> = items.toList()
 
     private var currentQuery = ""
     private var currentCategory = "All"
 
     /** Called after every filter pass with the number of visible items. */
     var onFilterResult: ((Int) -> Unit)? = null
+
+    init {
+        submitList(computeFiltered())
+    }
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val coverImage: ImageView = itemView.findViewById(R.id.mangaCover)
@@ -44,10 +55,9 @@ class MangaAdapter(
         return ViewHolder(v)
     }
 
-    override fun getItemCount() = filteredList.size
-
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val item = filteredList[position]
+        val item = getItem(position)
+
         // Load cover: prefer remote URL, fall back to local drawable
         if (item.coverUrl.isNotEmpty()) {
             holder.coverImage.load(item.coverUrl) {
@@ -76,20 +86,17 @@ class MangaAdapter(
             false
         }
 
-        // BUG 10 FIX: Re-derive item from filteredList using bindingAdapterPosition so
-        // the lambda always operates on the current item, not a stale captured reference.
+        // FIX 4: use NO_POSITION (correct constant) and getItem(pos).
         holder.favoriteBtn.setOnClickListener {
             val pos = holder.bindingAdapterPosition
-            if (pos == RecyclerView.NO_ID.toInt()) return@setOnClickListener
-            toggleFavorite(holder, filteredList[pos])
+            if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
+            toggleFavorite(holder, getItem(pos))
         }
 
-        // BUG 11 FIX: Add FLAG_ACTIVITY_NEW_TASK as a safety net in case context is not
-        // an Activity context (e.g., ApplicationContext passed by mistake).
         holder.cardClickArea.setOnClickListener {
             val pos = holder.bindingAdapterPosition
-            if (pos == RecyclerView.NO_ID.toInt()) return@setOnClickListener
-            val current = filteredList[pos]
+            if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
+            val current = getItem(pos)
             ReadingHistoryManager.addToHistory(context, current.title)
             val intent = Intent(context, ReaderActivity::class.java).apply {
                 putExtra("url", current.url)
@@ -107,10 +114,9 @@ class MangaAdapter(
             return
         }
         val newFav = !item.isFavorite
-        item.isFavorite = newFav
-        holder.favoriteBtn.text = if (newFav) "❤️" else "🤍"
+        // Optimistic UI update via an immutable copy + resubmit.
+        setFavorite(item.id, newFav)
         burst(holder.favoriteBtn)
-        masterList.find { it.id == item.id }?.isFavorite = newFav
 
         val ref = FirebaseHelper.ref("users/${user.uid}/favorites/${item.id}")
 
@@ -120,11 +126,16 @@ class MangaAdapter(
             ComicBubble.show(context, if (newFav) "Added to Saved! \uD83D\uDD25" else "Removed from Saved")
         }.addOnFailureListener { e ->
             Log.e("MangaFav", "Firebase FAILED id=${item.id}", e)
-            item.isFavorite = !newFav
-            masterList.find { it.id == item.id }?.isFavorite = !newFav
-            notifyDataSetChanged()
+            // Rollback via resubmit (not notifyDataSetChanged).
+            setFavorite(item.id, !newFav)
             ComicBubble.show(context, "Couldn't update favourite")
         }
+    }
+
+    /** Replaces the item with a copy carrying the new favourite flag, then resubmits. */
+    private fun setFavorite(id: String, favorite: Boolean) {
+        masterList = masterList.map { if (it.id == id) it.copy(isFavorite = favorite) else it }
+        applyFilters()
     }
 
     /** Heart "pop" when a title is (un)saved. */
@@ -144,21 +155,31 @@ class MangaAdapter(
         applyFilters()
     }
 
-    private fun applyFilters() {
-        filteredList = masterList.filter { item ->
-            val matchesQuery = currentQuery.isEmpty() || item.title.lowercase().contains(currentQuery)
-            val matchesCategory = currentCategory == "All" || item.category == currentCategory
-            matchesQuery && matchesCategory
-        }.toMutableList()
-        notifyDataSetChanged()
-        onFilterResult?.invoke(filteredList.size)
+    /** FIX 5: reuse a single adapter instance (e.g. from AssistantFragment). */
+    fun setItems(items: List<MangaItem>) {
+        masterList = items.toList()
+        applyFilters()
     }
 
     fun setFavoriteIds(favoriteIds: Set<String>) {
-        // BUG 16 FIX: Only iterate masterList since filteredList shares object references.
-        // Mutations to masterList items automatically reflect in filteredList.
-        masterList.forEach { it.isFavorite = favoriteIds.contains(it.id) }
-        notifyDataSetChanged()
+        val updated = masterList.map { it.copy(isFavorite = favoriteIds.contains(it.id)) }
+        if (updated != masterList) {
+            masterList = updated
+            applyFilters()
+        }
+    }
+
+    private fun computeFiltered(): List<MangaItem> =
+        masterList.filter { item ->
+            val matchesQuery = currentQuery.isEmpty() || item.title.lowercase().contains(currentQuery)
+            val matchesCategory = currentCategory == "All" || item.category == currentCategory
+            matchesQuery && matchesCategory
+        }
+
+    private fun applyFilters() {
+        val filtered = computeFiltered()
+        submitList(filtered)
+        onFilterResult?.invoke(filtered.size)
     }
 
     private fun applyChipStyle(chip: TextView, category: String) {
@@ -182,5 +203,15 @@ class MangaAdapter(
             else         -> R.color.tag_manga
         }
         spine.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(context, colorRes))
+    }
+
+    companion object {
+        private val DIFF = object : DiffUtil.ItemCallback<MangaItem>() {
+            override fun areItemsTheSame(oldItem: MangaItem, newItem: MangaItem): Boolean =
+                oldItem.id == newItem.id
+
+            override fun areContentsTheSame(oldItem: MangaItem, newItem: MangaItem): Boolean =
+                oldItem == newItem
+        }
     }
 }

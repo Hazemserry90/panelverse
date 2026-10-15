@@ -1,21 +1,35 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# ─────────────────────────────────────────────────────────────────────────────
+# FIX 10: R8 / ProGuard rules for the release build (minify + shrink enabled)
+# ─────────────────────────────────────────────────────────────────────────────
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep generic signatures + annotations (needed by Firebase/Gson-style reflection)
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes InnerClasses,EnclosingMethod
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ── App models ────────────────────────────────────────────────────────────────
+# MangaItem is used across the catalogue and copied via data-class equality
+-keep class com.example.testing.MangaItem { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Firebase Realtime Database POJOs deserialised with getValue(Class)
+-keep class com.example.testing.SignupFragment$User { *; }
+-keep class com.example.testing.LoginFragment$* { *; }
+-keepclassmembers class * {
+    @com.google.firebase.database.PropertyName <fields>;
+}
+# Generic POJO safety: keep no-arg constructors of app model classes
+-keepclassmembers class com.example.testing.** {
+    <init>();
+}
+
+# ── android-gif-drawable ──────────────────────────────────────────────────────
+-keep class pl.droidsonroids.gif.** { *; }
+-dontwarn pl.droidsonroids.gif.**
+
+# ── WorkManager workers ───────────────────────────────────────────────────────
+-keep class * extends androidx.work.ListenableWorker {
+    public <init>(...);
+}
+-keep class * extends androidx.work.Worker {
+    public <init>(...);
+}

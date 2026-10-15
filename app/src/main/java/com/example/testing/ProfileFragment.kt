@@ -16,7 +16,6 @@ import androidx.navigation.fragment.findNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
 class ProfileFragment : Fragment() {
@@ -43,16 +42,32 @@ class ProfileFragment : Fragment() {
 
     // BUG 13 FIX: Apply FLAG_SECURE in onResume/onPause (not onCreateView/onDestroyView)
     // so it is guaranteed to be cleared even if the app crashes mid-session.
+    // FIX 2: NavbarFragment switches tabs with show()/hide(), so a hidden ProfileFragment
+    // stays RESUMED and onPause() never fires on a tab switch — FLAG_SECURE then leaked
+    // app-wide (screenshots blocked everywhere). Only apply it while actually visible.
     override fun onResume() {
         super.onResume()
+        if (!isHidden) applySecureFlag()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        clearSecureFlag()
+    }
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        if (hidden) clearSecureFlag() else applySecureFlag()
+    }
+
+    private fun applySecureFlag() {
         activity?.window?.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
         )
     }
 
-    override fun onPause() {
-        super.onPause()
+    private fun clearSecureFlag() {
         activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }
 
@@ -134,6 +149,8 @@ class ProfileFragment : Fragment() {
             .child("username")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
+                    // FIX 3: guard async callback against fragment death.
+                    if (!isAdded) return
                     if (snapshot.exists()) {
                         usernameEditText.setText(snapshot.getValue(String::class.java))
                     } else {
@@ -142,6 +159,7 @@ class ProfileFragment : Fragment() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
+                    if (!isAdded) return
                     Toast.makeText(context, "Could not load profile data.", Toast.LENGTH_SHORT).show()
                 }
             })
@@ -155,6 +173,8 @@ class ProfileFragment : Fragment() {
             .child("username")
             .setValue(username)
             .addOnCompleteListener { task ->
+                // FIX 3: guard async callback against fragment death.
+                if (!isAdded) return@addOnCompleteListener
                 if (task.isSuccessful) {
                     Toast.makeText(context, "Username updated successfully", Toast.LENGTH_SHORT).show()
                 } else {
@@ -182,10 +202,12 @@ class ProfileFragment : Fragment() {
             .child("favorites")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
+                    if (!isAdded) return
                     favoritesCount.text = snapshot.childrenCount.toString()
                 }
 
                 override fun onCancelled(error: DatabaseError) {
+                    if (!isAdded) return
                     favoritesCount.text = "0"
                 }
             })
@@ -232,5 +254,5 @@ class ProfileFragment : Fragment() {
         return Math.round(dp * density)
     }
 
-    // FLAG_SECURE is now cleared in onPause() — see above (Bug 13 fix).
+    // FLAG_SECURE is cleared in onPause()/onHiddenChanged() — see above (Bug 13 + FIX 2).
 }

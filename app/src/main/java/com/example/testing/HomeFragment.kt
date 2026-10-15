@@ -371,7 +371,7 @@ class HomeFragment : Fragment() {
             }
             chips[i] = chip
             chip.setOnClickListener {
-                chips.forEachIndexed { idx, c ->
+                chips.forEachIndexed { _, c ->
                     c?.setBackgroundResource(R.drawable.bg_chip_unselected)
                     c?.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
                 }

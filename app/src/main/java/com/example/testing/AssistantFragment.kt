@@ -135,8 +135,8 @@ class AssistantFragment : Fragment() {
     }
 
     private fun setSuggestions(list: List<MangaItem>) {
-        adapter = MangaAdapter(requireContext(), list)
-        recyclerView?.adapter = adapter
+        // FIX 5: reuse the single adapter instance instead of recreating it.
+        adapter?.setItems(list)
     }
 
     private fun runRecommendation(rawText: String, interests: Set<String>, initial: Boolean) {
