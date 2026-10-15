@@ -31,8 +31,9 @@
             android:background="?attr/selectableItemBackground"
             android:minHeight="120dp">
 
-            <!-- Red ink spine bar -->
+            <!-- Red ink spine bar — tinted per category -->
             <View
+                android:id="@+id/spineAccent"
                 android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:background="@drawable/bg_ink_bar"/>

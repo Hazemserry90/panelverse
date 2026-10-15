@@ -19,14 +19,12 @@
         android:paddingStart="16dp"
         android:paddingEnd="16dp">
 
-        <!-- Top row: branding left · saved button right -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <!-- Red ink spine + title block -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -34,14 +32,12 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Thick red ink bar — like a manga title page spine -->
                 <View
                     android:layout_width="5dp"
                     android:layout_height="48dp"
                     android:layout_marginEnd="12dp"
                     android:background="@drawable/bg_ink_bar"/>
 
-                <!-- App name stacked -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -85,7 +81,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- ❤️ Saved pill -->
             <TextView
                 android:id="@+id/btnViewFavorites"
                 android:layout_width="wrap_content"
@@ -103,7 +98,6 @@
                 android:focusable="true"/>
         </LinearLayout>
 
-        <!-- Thin red ink underline under masthead -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
@@ -112,7 +106,6 @@
             android:background="@color/accent_ink"
             android:alpha="0.4"/>
 
-        <!-- Search bar -->
         <EditText
             android:id="@+id/mangaSearchEditText"
             android:layout_width="match_parent"
@@ -163,13 +156,13 @@
         android:paddingEnd="16dp"
         android:paddingBottom="6dp">
 
-        <!-- Red ink bar accent -->
         <View
             android:layout_width="4dp"
             android:layout_height="16dp"
             android:background="@color/accent_ink"/>
 
         <TextView
+            android:id="@+id/sectionTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -182,14 +175,88 @@
 
     </LinearLayout>
 
-    <!-- ══════════════════════  LIST  ══════════════════════ -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/mangaRecyclerView"
+    <!-- ══════════════════════  LIST + OVERLAYS  ══════════════════════ -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:paddingBottom="90dp"
-        android:clipToPadding="false"
-        tools:listitem="@layout/item_manga_card"/>
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/mangaRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingBottom="90dp"
+            android:clipToPadding="false"
+            tools:listitem="@layout/item_manga_card"/>
+
+        <!-- Comic empty-state bubble -->
+        <LinearLayout
+            android:id="@+id/emptyStateView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/bg_speech_bubble"
+            android:paddingStart="26dp"
+            android:paddingEnd="26dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="30dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="😵"
+                android:textSize="38sp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="No titles found!"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Try another search or category."
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"/>
+        </LinearLayout>
+
+        <!-- Comic trick: surprise me (random title) -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabRandom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="18dp"
+            android:layout_marginBottom="18dp"
+            android:contentDescription="Surprise me"
+            app:srcCompat="@drawable/ic_dice"
+            app:backgroundTint="@color/accent_ink"
+            app:tint="@color/white"
+            app:fabSize="normal"/>
+
+        <!-- Back to top -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabBackToTop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="26dp"
+            android:layout_marginBottom="92dp"
+            android:visibility="gone"
+            android:contentDescription="Back to top"
+            app:srcCompat="@drawable/ic_arrow_up"
+            app:backgroundTint="@color/bg_elevated"
+            app:tint="@color/text_primary"
+            app:fabSize="mini"/>
+
+    </FrameLayout>
 
 </LinearLayout>

@@ -2,13 +2,15 @@ package com.example.testing
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import coil.transform.RoundedCornersTransformation
@@ -25,12 +27,16 @@ class MangaAdapter(
     private var currentQuery = ""
     private var currentCategory = "All"
 
+    /** Called after every filter pass with the number of visible items. */
+    var onFilterResult: ((Int) -> Unit)? = null
+
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val coverImage: ImageView = itemView.findViewById(R.id.mangaCover)
         val titleText: TextView = itemView.findViewById(R.id.mangaTitle)
         val categoryChip: TextView = itemView.findViewById(R.id.mangaCategory)
         val favoriteBtn: TextView = itemView.findViewById(R.id.mangaFavorite)
         val cardClickArea: View = itemView.findViewById(R.id.cardClickArea)
+        val spineAccent: View = itemView.findViewById(R.id.spineAccent)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -56,7 +62,19 @@ class MangaAdapter(
         holder.titleText.text = item.title
         holder.categoryChip.text = item.category
         applyChipStyle(holder.categoryChip, item.category)
+        applySpineStyle(holder.spineAccent, item.category)
         holder.favoriteBtn.text = if (item.isFavorite) "❤️" else "🤍"
+
+        // Comic trick: the whole panel squeezes slightly while pressed.
+        holder.cardClickArea.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN ->
+                    v.animate().scaleX(0.965f).scaleY(0.965f).setDuration(80).start()
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+            }
+            false
+        }
 
         // BUG 10 FIX: Re-derive item from filteredList using bindingAdapterPosition so
         // the lambda always operates on the current item, not a stale captured reference.
@@ -85,12 +103,13 @@ class MangaAdapter(
     private fun toggleFavorite(holder: ViewHolder, item: MangaItem) {
         val user = FirebaseAuth.getInstance().currentUser
         if (user == null) {
-            Toast.makeText(context, "Login to save favorites", Toast.LENGTH_SHORT).show()
+            ComicBubble.show(context, "Sign in to save favourites \uD83D\uDD12")
             return
         }
         val newFav = !item.isFavorite
         item.isFavorite = newFav
         holder.favoriteBtn.text = if (newFav) "❤️" else "🤍"
+        burst(holder.favoriteBtn)
         masterList.find { it.id == item.id }?.isFavorite = newFav
 
         val ref = FirebaseHelper.ref("users/${user.uid}/favorites/${item.id}")
@@ -98,13 +117,21 @@ class MangaAdapter(
         val task = if (newFav) ref.setValue(true) else ref.removeValue()
         task.addOnSuccessListener {
             Log.d("MangaFav", "Firebase ${if (newFav) "write" else "remove"} SUCCESS id=${item.id}")
+            ComicBubble.show(context, if (newFav) "Added to Saved! \uD83D\uDD25" else "Removed from Saved")
         }.addOnFailureListener { e ->
             Log.e("MangaFav", "Firebase FAILED id=${item.id}", e)
             item.isFavorite = !newFav
             masterList.find { it.id == item.id }?.isFavorite = !newFav
             notifyDataSetChanged()
-            Toast.makeText(context, "Could not update favorite. Check Firebase rules.", Toast.LENGTH_LONG).show()
+            ComicBubble.show(context, "Couldn't update favourite")
         }
+    }
+
+    /** Heart "pop" when a title is (un)saved. */
+    private fun burst(view: View) {
+        view.animate().scaleX(1.4f).scaleY(1.4f).setDuration(120).withEndAction {
+            view.animate().scaleX(1f).scaleY(1f).setDuration(140).start()
+        }.start()
     }
 
     fun filterByQuery(query: String?) {
@@ -124,6 +151,7 @@ class MangaAdapter(
             matchesQuery && matchesCategory
         }.toMutableList()
         notifyDataSetChanged()
+        onFilterResult?.invoke(filteredList.size)
     }
 
     fun setFavoriteIds(favoriteIds: Set<String>) {
@@ -142,5 +170,17 @@ class MangaAdapter(
             else         -> R.drawable.bg_tag_manga
         }
         chip.setBackgroundResource(res)
+    }
+
+    /** Tint the card spine to match the category — a quick visual cue. */
+    private fun applySpineStyle(spine: View, category: String) {
+        val colorRes = when (category) {
+            "Marvel"     -> R.color.tag_marvel
+            "DC"         -> R.color.tag_dc
+            "Invincible" -> R.color.tag_invincible
+            "Comics"     -> R.color.accent_purple
+            else         -> R.color.tag_manga
+        }
+        spine.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(context, colorRes))
     }
 }

@@ -1,5 +1,6 @@
 package com.example.testing
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -23,6 +24,9 @@ class HomeFragment : Fragment() {
     private var adapter: MangaAdapter? = null
     private var favRef: DatabaseReference? = null
     private var favListener: ValueEventListener? = null
+    private var emptyView: View? = null
+    private var sectionTitle: TextView? = null
+    private var fabTop: View? = null
 
     companion object {
         private val CATEGORIES = arrayOf("All", "Manga", "Marvel", "DC", "Invincible", "Comics")
@@ -285,10 +289,14 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        emptyView = view.findViewById(R.id.emptyStateView)
+        sectionTitle = view.findViewById(R.id.sectionTitle)
+        fabTop = view.findViewById(R.id.fabBackToTop)
         setupRecyclerView(view)
         setupSearchView(view)
         setupCategoryChips(view)
         setupFavoritesButton(view)
+        setupComicButtons(view)
         // BUG 9 FIX: Listener is attached in onStart and detached in onStop so it
         // is correctly paired even when the fragment is shown/hidden by NavbarFragment.
     }
@@ -322,6 +330,14 @@ class HomeFragment : Fragment() {
             adapter = MangaAdapter(requireContext(), catalogue)
             rv.adapter = adapter
         }
+        adapter?.onFilterResult = { count -> updateResultUi(count) }
+        updateResultUi(catalogue.size)
+    }
+
+    /** Updates the section count and the comic empty-state bubble. */
+    private fun updateResultUi(count: Int) {
+        emptyView?.visibility = if (count == 0) View.VISIBLE else View.GONE
+        sectionTitle?.text = if (count == 0) "NO TITLES" else "TITLES · $count"
     }
 
     private fun setupSearchView(view: View) {
@@ -375,6 +391,29 @@ class HomeFragment : Fragment() {
             // fragment manager / back stack.
             (parentFragment as? NavbarFragment)?.switchToTab(R.id.favorites)
         }
+    }
+
+    private fun setupComicButtons(view: View) {
+        // Comic trick: "Surprise me" opens a random title.
+        view.findViewById<View>(R.id.fabRandom)?.setOnClickListener {
+            val list = catalogue
+            if (list.isNotEmpty()) {
+                val pick = list.random()
+                ReadingHistoryManager.addToHistory(requireContext(), pick.title)
+                startActivity(Intent(requireContext(), ReaderActivity::class.java).apply {
+                    putExtra("url", pick.url)
+                    putExtra("title", pick.title)
+                })
+            }
+        }
+        fabTop?.setOnClickListener { recyclerView?.smoothScrollToPosition(0) }
+        recyclerView?.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                val first = (rv.layoutManager as? LinearLayoutManager)
+                    ?.findFirstVisibleItemPosition() ?: 0
+                fabTop?.visibility = if (first > 5) View.VISIBLE else View.GONE
+            }
+        })
     }
 
     private fun attachFavoritesListener() {

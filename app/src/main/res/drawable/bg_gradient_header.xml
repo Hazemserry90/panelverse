@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Manga header gradient: dark top to slightly lighter — like manga chapter header pages -->
+<!-- Manga header gradient + halftone dot texture -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:startColor="@color/bg_section"
                 android:endColor="@color/bg_dark"
-                android:angle="270"/>
+                android:angle="270" />
         </shape>
     </item>
     <!-- Red left side glow for manga ink feel -->
@@ -15,7 +15,9 @@
             <gradient
                 android:startColor="#22FF1F3A"
                 android:endColor="#00FF1F3A"
-                android:angle="0"/>
+                android:angle="0" />
         </shape>
     </item>
+    <!-- Halftone dots -->
+    <item android:alpha="0.5" android:drawable="@drawable/bg_halftone" />
 </layer-list>

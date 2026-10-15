@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Repeating halftone dot texture (comic print feel) -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/halftone_dot"
+    android:tileMode="repeat"
+    android:gravity="top|left" />
