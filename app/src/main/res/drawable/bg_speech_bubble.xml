@@ -1,26 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Comic speech bubble with a tail (bottom-left) -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:bottom="12dp">
-        <shape android:shape="rectangle">
-            <solid android:color="@color/bg_card" />
-            <corners android:radius="18dp" />
-            <stroke android:width="1.5dp" android:color="@color/accent_ink" />
-        </shape>
-    </item>
-    <item
-        android:gravity="bottom|left"
-        android:left="28dp"
-        android:bottom="4dp"
-        android:width="16dp"
-        android:height="16dp">
-        <rotate
-            android:fromDegrees="45"
-            android:pivotX="50%"
-            android:pivotY="50%">
-            <shape android:shape="rectangle">
-                <solid android:color="@color/bg_card" />
-            </shape>
-        </rotate>
-    </item>
-</layer-list>
+<!-- Comic bubble (no tail) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/bg_card" />
+    <corners android:radius="18dp" />
+    <stroke android:width="1.5dp" android:color="@color/accent_ink" />
+</shape>

@@ -9,7 +9,7 @@
     android:paddingStart="20dp"
     android:paddingEnd="20dp"
     android:paddingTop="14dp"
-    android:paddingBottom="18dp">
+    android:paddingBottom="14dp">
 
     <TextView
         android:id="@+id/comicBubbleText"

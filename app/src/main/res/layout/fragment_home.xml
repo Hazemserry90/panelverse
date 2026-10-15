@@ -201,7 +201,7 @@
             android:paddingStart="26dp"
             android:paddingEnd="26dp"
             android:paddingTop="20dp"
-            android:paddingBottom="30dp"
+            android:paddingBottom="22dp"
             android:visibility="gone">
 
             <TextView
