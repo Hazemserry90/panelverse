@@ -1,112 +1,55 @@
 # PanelVerse
 
-**PanelVerse** is an Android app for reading **manga** and **comics** (Marvel, DC and more) in one place — with a modern ink-inspired UI, a built-in reader, cloud-synced favourites and an offline **AI recommendation assistant**.
+PanelVerse is an Android app for browsing manga and comics, keeping a reading list, and picking up where you left off. The **Ink & Screentone** interface brings together a searchable cover grid, series details, an in-app web reader, and an offline library for your own files.
 
-> Formerly named *MangaVerse*.
+## Features
 
----
+- **Home and Discover** — Browse Manga, Marvel, DC, Invincible, and Comics. Search by title or find recommendations based on your interests and reading history.
+- **Series and Saved** — Open a title to see its cover and reading provider. Save favourites to your Firebase account or share a series link.
+- **Web reader** — Open provider chapters inside the app. The reader saves your last loaded chapter and uses the visible page image or scroll position to resume. Restoration depends on the provider’s layout.
+- **Ad filtering** — Use **Reader options → Block ads** to block known ad hosts and hide supported overlays. Provider ads can change, so some may still appear.
+- **Offline library** — Import a local CBZ with JPG, PNG, or WebP pages. PanelVerse keeps a copy on the device and remembers the last page for each book.
+- **Appearance and reminders** — Switch between paper and ink themes and control local reading reminders in Settings.
 
-## ✨ Features
+## Install on Android
 
-- **Big, categorised library** — Manga, Marvel, DC, Invincible and Comics, all in a searchable list.
-- **Search & filter** — live search plus category chips.
-- **Built-in reader** — open any title and read it inside the app.
-- **Favourites** — saved to your account and synced across devices (Firebase Auth + Realtime Database).
-- **AI Assistant** (new tab)
-  - Pick interest chips (Superheroes, Action, Dark & Gritty, Horror, Sports, …) or type what you're in the mood for.
-  - Get instant recommendations from the catalogue.
-  - **Learns from your reading:** suggests titles *similar to the last thing you read*.
-  - Runs fully offline — no API key, no cost.
-- **Reading history** — remembers what you opened.
-- **Notifications** — periodic "pick up where you left off" reminders (WorkManager).
-- **Light / dark theme** — cream "paper" and deep ink "night" palettes.
-- **Unique cover art** — every title ships with its own cover, bundled for offline use.
+If a signed APK has been published, download it from [GitHub Releases](https://github.com/Hazemserry90/panelverse/releases). Open the APK on your phone and follow Android’s install prompt. To install over an existing PanelVerse build, the APK must use the same signing certificate. Android 7.0 (API 24) or later is required.
 
----
+## Read offline
 
-## 🧱 Tech stack
+1. Put a CBZ file you’re allowed to use on your phone.
+2. In PanelVerse, open **Offline → Import CBZ** and select the file.
+3. Open the imported title from the library. **Previous** and **Next** turn pages. Reopening it resumes at the last page you read.
 
-| Area | Used |
-|---|---|
-| Language | Kotlin |
-| UI | AndroidX, Material 3, View/XML layouts, RecyclerView |
-| Images | Coil |
-| Auth / data | Firebase Authentication, Firebase Realtime Database |
-| Background | WorkManager |
-| GIF | android-gif-drawable |
-| Build | Gradle (Kotlin DSL), Android Gradle Plugin 8.7.0, Gradle 8.9 |
-| SDK | `minSdk 24`, `compileSdk`/`targetSdk 34` |
-| Package | `com.example.testing` |
+The offline library supports imported files up to 250 MB. Provider chapters are streamed in the web reader. Importing CBZ files is the current offline workflow.
 
----
+## Build from source
 
-## 📂 Project structure
+You’ll need Android Studio or the Android command-line tools, JDK 17 or 21, Android SDK Platform 34, and Build-Tools 34.0.0. The project uses Kotlin, AndroidX, Material 3, Gradle 8.9, and Firebase.
 
-```
-app/src/main/
-├── java/com/example/testing/
-│   ├── MainActivity.kt            # hosts the nav graph
-│   ├── splashscreen.kt            # splash
-│   ├── NavbarFragment.kt          # bottom-nav tab host (Home / AI / Saved / Profile / Settings)
-│   ├── HomeFragment.kt            # catalogue + search + category chips
-│   ├── AssistantFragment.kt       # offline AI recommender (+ reading-history suggestions)
-│   ├── FavoritesFragment.kt       # cloud-synced favourites
-│   ├── ProfileFragment.kt / SettingsFragment.kt
-│   ├── StartFragment.kt / GameFragment.kt / EndgameFragment.kt  # auth screens
-│   ├── ReaderActivity.kt          # in-app reader
-│   ├── MangaItem.kt / MangaAdapter.kt
-│   ├── ReadingHistoryManager.kt   # local reading history
-│   └── NotificationWorker.kt      # periodic reminders
-└── res/                           # layouts, drawables (covers), themes, menu
-```
+1. Clone the repo.
 
----
-
-## 🚀 Building
-
-### Requirements
-- **Android Studio** (or the Android command-line tools)
-- **JDK 17+**
-- Android **SDK Platform 34** and **Build-Tools 34.0.0**
-
-### Steps
-1. Clone the repo:
-   ```bash
+   ~~~sh
    git clone https://github.com/Hazemserry90/panelverse.git
    cd panelverse
-   ```
-2. Create **`local.properties`** in the project root with your SDK path:
-   ```properties
-   sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
-   ```
-3. Add your Firebase config file at **`app/google-services.json`** (Firebase console → Project settings → Android app `com.example.testing`).
-4. Build:
-   ```bash
-   ./gradlew assembleDebug
-   ```
-   The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+   ~~~
 
-> `local.properties` and `app/google-services.json` are **git-ignored** (they contain machine-specific paths and API keys), so you must supply your own.
+2. Open the project in Android Studio so it can configure the SDK, or set the `ANDROID_HOME` environment variable to your SDK folder.
+3. In your Firebase project, register the Android application ID `com.example.testing`, enable Email/Password sign-in, and configure Realtime Database rules that restrict users to their own records. Put the downloaded Firebase client config in `app/google-services.json`. Point `FirebaseHelper.kt` at your own Realtime Database instance when building against a different project.
+4. Build a debug APK.
 
----
+   ~~~powershell
+   .\gradlew.bat :app:assembleDebug
+   ~~~
 
-## 📚 Content sources
+   On macOS or Linux, run `./gradlew :app:assembleDebug`. The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
-PanelVerse is a reader/catalogue front-end. All manga and comic content is streamed from third-party sites:
+Release builds use your local `keystore.properties`, or an external file selected by `PANELVERSE_RELEASE_SIGNING_PROPERTIES`. Run `:app:assembleRelease` to build the release variant. Keep keystores, signing passwords, machine configuration, and Firebase client configuration out of version control.
 
-- **Comics:** readcomicsonline.ru
-- **Manga:** mangakatana.com
+## Content and security
 
-Cover images belong to their respective publishers/owners and are used here for identification only.
+The online reader opens supported chapters from MangaKatana and Read Comics Online. Availability, chapter layout, and advertising can vary by provider. Cover art belongs to its respective rights holders.
 
----
+For reporting security issues, see [SECURITY.md](SECURITY.md).
 
-## 🔒 Security
-
-Security-hardening measures and responsible-disclosure instructions are documented in [SECURITY.md](SECURITY.md). Short version: no secrets are committed, the Firebase database requires authentication, the in-app WebView only loads `http`/`https` (file access off, no JS bridge), external components are not exported, and cleartext traffic is disabled.
-
----
-
-## 👤 Author
-
-**Hazem Serry** — [@Hazemserry90](https://github.com/Hazemserry90)
+Maintained by [Hazem Serry](https://github.com/Hazemserry90).
