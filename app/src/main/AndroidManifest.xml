@@ -8,6 +8,7 @@
 
     <application
         android:allowBackup="false"
+        android:usesCleartextTraffic="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -29,6 +30,12 @@
         </activity>
         <activity
             android:name=".MainActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SeriesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".OfflineActivity"
             android:exported="false" />
         <activity
             android:name=".ReaderActivity"

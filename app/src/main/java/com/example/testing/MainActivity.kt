@@ -24,10 +24,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val auth = FirebaseAuth.getInstance()
+        if (auth.currentUser?.isEmailVerified == false) auth.signOut()
+        val navHost = supportFragmentManager
+            .findFragmentById(R.id.fragmentContainerView) as? NavHostFragment
+        if (auth.currentUser == null && navHost?.navController?.currentDestination?.id == R.id.navbarFragment) {
+            navHost?.navController?.navigate(R.id.action_navbarFragment_to_startFragment)
+        }
+
         // Only navigate on a genuine cold start (savedInstanceState == null).
-        if (savedInstanceState == null && FirebaseAuth.getInstance().currentUser != null) {
-            val navHost = supportFragmentManager
-                .findFragmentById(R.id.fragmentContainerView) as? NavHostFragment
+        if (savedInstanceState == null && auth.currentUser != null) {
             navHost?.navController?.navigate(R.id.action_startFragment_to_navbarFragment)
         }
 

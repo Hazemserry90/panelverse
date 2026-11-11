@@ -13,139 +13,156 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center_horizontal"
-        android:paddingStart="28dp"
-        android:paddingEnd="28dp"
-        android:paddingTop="72dp"
-        android:paddingBottom="48dp">
+        android:paddingStart="@dimen/screen_padding_auth_h"
+        android:paddingEnd="@dimen/screen_padding_auth_h"
+        android:paddingTop="64dp"
+        android:paddingBottom="@dimen/space_xl">
 
-        <!-- App icon badge -->
         <TextView
-            android:layout_width="88dp"
-            android:layout_height="88dp"
-            android:text="📚"
-            android:textSize="44sp"
+            android:layout_width="84dp"
+            android:layout_height="84dp"
+            android:text="@string/pv_4"
+            android:textSize="40sp"
             android:gravity="center"
-            android:background="@drawable/bg_featured_card"/>
+            android:background="@drawable/bg_featured_card" />
 
-        <!-- Welcome title -->
         <TextView
             android:id="@+id/login"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Welcome Back"
-            android:textColor="@color/text_primary"
-            android:textSize="32sp"
-            android:textStyle="bold"
-            android:gravity="center"/>
+            android:layout_marginTop="@dimen/space_md"
+            android:text="@string/pv_welcome_back"
+            android:textAppearance="@style/TextAppearance.PanelVerse.Display"
+            android:textSize="30sp"
+            android:gravity="center" />
 
-        <!-- Subtitle -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="40dp"
-            android:text="Sign in to your PanelVerse account"
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp"
-            android:gravity="center"/>
+            android:layout_marginTop="@dimen/space_xs"
+            android:layout_marginBottom="@dimen/space_lg"
+            android:text="@string/pv_sign_in_to_your_panelverse_account"
+            android:textAppearance="@style/TextAppearance.PanelVerse.Body"
+            android:gravity="center" />
 
-        <!-- Username / email field -->
-        <EditText
-            android:id="@+id/username"
+        <!-- Form panel -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:background="@drawable/bg_input_field"
-            android:hint="Email or Username"
-            android:textColorHint="@color/text_muted"
-            android:textColor="@color/text_primary"
-            android:paddingStart="18dp"
-            android:paddingEnd="18dp"
-            android:drawableStart="@drawable/baseline_account_circle_24"
-            android:drawablePadding="14dp"
-            android:inputType="textEmailAddress"/>
-
-        <!-- Password field wrapped in TextInputLayout for toggle -->
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/bg_input_field"
-            app:passwordToggleEnabled="true"
-            app:passwordToggleTint="@color/accent_purple"
-            app:boxBackgroundMode="none">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_section_card"
+            android:padding="18dp">
 
             <EditText
-                android:id="@+id/password"
+                android:id="@+id/username"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@null"
-                android:hint="Password"
-                android:inputType="textPassword"
+                android:layout_height="@dimen/input_height"
+                android:background="@drawable/bg_input_field"
+                android:hint="@string/pv_email_address"
                 android:textColorHint="@color/text_muted"
                 android:textColor="@color/text_primary"
-                android:paddingStart="18dp"
-                android:paddingEnd="18dp"
-                android:paddingTop="14dp"
-                android:paddingBottom="14dp"
-                android:drawableStart="@drawable/baseline_key_24"
-                android:drawablePadding="14dp"/>
-        </com.google.android.material.textfield.TextInputLayout>
+                android:textSize="15sp"
+                android:paddingStart="@dimen/space_md"
+                android:paddingEnd="@dimen/space_md"
+                android:drawableStart="@drawable/baseline_account_circle_24"
+                android:drawableTint="@color/text_muted"
+                android:drawablePadding="14dp"
+                android:inputType="textEmailAddress"
+                android:autofillHints="emailAddress"
+                android:singleLine="true" />
 
-        <!-- Attempts warning -->
-        <TextView
-            android:id="@+id/attemptsWarning"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:gravity="center"
-            android:text=""
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:visibility="gone"/>
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/input_height"
+                android:layout_marginTop="@dimen/space_sm"
+                android:background="@drawable/bg_input_field"
+                app:passwordToggleEnabled="true"
+                app:passwordToggleTint="@color/accent_ink"
+                app:boxBackgroundMode="none">
 
-        <!-- Lockout message -->
-        <TextView
-            android:id="@+id/lockoutMessage"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:gravity="center"
-            android:text=""
-            android:textColor="@color/accent_red"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:visibility="gone"/>
+                <EditText
+                    android:id="@+id/password"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@null"
+                    android:hint="@string/pv_password"
+                    android:inputType="textPassword"
+                    android:saveEnabled="false"
+                    android:autofillHints="password"
+                    android:textColorHint="@color/text_muted"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:paddingStart="@dimen/space_md"
+                    android:paddingEnd="@dimen/space_md"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="14dp"
+                    android:drawableStart="@drawable/baseline_key_24"
+                    android:drawableTint="@color/text_muted"
+                    android:drawablePadding="14dp" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Login button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/ingame"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="28dp"
-            android:text="LOGIN"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.08"
-            app:backgroundTint="@color/accent_purple"
-            app:cornerRadius="16dp"/>
+            <TextView
+                android:id="@+id/attemptsWarning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_sm"
+                android:gravity="center"
+                android:text=""
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
 
-        <!-- Forgot password link -->
+            <TextView
+                android:id="@+id/lockoutMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:text=""
+                android:textColor="@color/accent_red"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/ingame"
+                style="@style/Widget.PanelVerse.Button"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height"
+                android:layout_marginTop="20dp"
+                android:text="@string/pv_login" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/Forgetpassword"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="Forgot password?"
-            android:textColor="@color/accent_purple"
+            android:layout_marginTop="18dp"
+            android:text="@string/pv_forgot_password"
+            android:textColor="@color/accent_ink"
             android:textStyle="bold"
             android:textSize="14sp"
             android:gravity="center"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:padding="8dp"/>
+            android:padding="@dimen/space_xs" />
+
+        <TextView
+            android:id="@+id/goToSignup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="@dimen/space_sm"
+            android:padding="@dimen/space_xs"
+            android:text="@string/pv_new_here_create_account"
+            android:textColor="@color/text_secondary"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
 
     </LinearLayout>
 </ScrollView>

@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_dark"
     android:orientation="vertical">
 
-    <!-- ── Top toolbar ─────────────────────────────────────────── -->
+    <!-- Top toolbar -->
     <LinearLayout
+        android:id="@+id/readerToolbar"
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:background="@color/bg_section"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:elevation="6dp">
+        android:paddingStart="@dimen/space_xs"
+        android:paddingEnd="@dimen/space_xs"
+        android:elevation="4dp">
 
-        <!-- Back button -->
         <ImageButton
             android:id="@+id/backButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:tint="@color/accent_purple"
-            android:contentDescription="Back"/>
+            app:tint="@color/accent_ink"
+            android:contentDescription="@string/pv_back" />
 
-        <!-- Chapter title -->
         <TextView
             android:id="@+id/readerTitle"
             android:layout_width="0dp"
@@ -35,23 +35,31 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:singleLine="true"
-            android:text="Reading…"
+            android:text="@string/pv_reading"
             android:textColor="@color/text_primary"
             android:textSize="16sp"
-            android:textStyle="bold"/>
+            android:textStyle="bold" />
 
-        <!-- Open in browser button -->
         <ImageButton
-            android:id="@+id/openBrowserButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:id="@+id/readerHideToolbar"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_share"
-            android:tint="@color/accent_purple"
-            android:contentDescription="Open in browser"/>
+            android:src="@android:drawable/arrow_up_float"
+            android:contentDescription="@string/pv_ink_focus"
+            app:tint="@color/text_primary" />
+
+        <ImageButton
+            android:id="@+id/readerOptionsButton"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_more"
+            app:tint="@color/accent_ink"
+            android:contentDescription="@string/pv_ink_reader_options" />
     </LinearLayout>
 
-    <!-- ── Chapter progress bar (thin purple) ──────────────────── -->
+    <!-- Reading progress -->
     <ProgressBar
         android:id="@+id/webProgress"
         style="?android:attr/progressBarStyleHorizontal"
@@ -59,14 +67,63 @@
         android:layout_height="3dp"
         android:max="100"
         android:progress="0"
-        android:progressTint="@color/accent_purple"
-        android:progressBackgroundTint="@color/bg_section"/>
+        android:progressTint="@color/accent_ink"
+        android:progressBackgroundTint="@color/bg_section" />
 
-    <!-- ── WebView fills remaining space ────────────────────────── -->
-    <WebView
-        android:id="@+id/readerWebView"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:background="#121212">
+
+        <WebView
+            android:id="@+id/readerWebView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:id="@+id/readerError"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/bg_dark"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pv_ink_reader_error"
+                android:textAppearance="@style/TextAppearance.PanelVerse.Title" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/readerRetry"
+                style="@style/Widget.PanelVerse.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/pv_ink_retry" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/readerSeriesPage"
+                style="@style/Widget.PanelVerse.Button.Outlined"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pv_ink_series_page" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/readerShowToolbar"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:layout_gravity="top|end"
+            android:layout_margin="8dp"
+            android:background="@drawable/bg_ink_panel"
+            android:contentDescription="@string/pv_ink_controls"
+            android:src="@android:drawable/arrow_down_float"
+            android:visibility="gone"
+            app:tint="@color/text_primary" />
+    </FrameLayout>
 
 </LinearLayout>

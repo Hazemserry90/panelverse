@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Manga header gradient + halftone dot texture -->
+<!-- Editorial header: surface→background gradient, ink glow + halftone texture -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
@@ -9,15 +9,13 @@
                 android:angle="270" />
         </shape>
     </item>
-    <!-- Red left side glow for manga ink feel -->
-    <item android:right="340dp">
+    <item android:right="300dp">
         <shape android:shape="rectangle">
             <gradient
-                android:startColor="#22FF1F3A"
-                android:endColor="#00FF1F3A"
+                android:startColor="#337C5CFF"
+                android:endColor="#007C5CFF"
                 android:angle="0" />
         </shape>
     </item>
-    <!-- Halftone dots -->
-    <item android:alpha="0.5" android:drawable="@drawable/bg_halftone" />
+    <item android:alpha="0.35" android:drawable="@drawable/bg_halftone" />
 </layer-list>

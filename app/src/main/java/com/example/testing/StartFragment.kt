@@ -18,6 +18,7 @@ class StartFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        view.findViewById<View>(R.id.startOffline).setOnClickListener { OfflineActivity.open(requireContext()) }
         view.findViewById<Button>(R.id.startgame).setOnClickListener {
             findNavController().navigate(R.id.action_startFragment_to_gameFragment)
         }

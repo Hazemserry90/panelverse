@@ -12,7 +12,6 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseAuthUserCollisionException
 
 class SignupFragment : Fragment() {
 
@@ -65,8 +64,8 @@ class SignupFragment : Fragment() {
             val confirm  = confirmField.text.toString().trim()
 
             // ── Validation ─────────────────────────────────────────────────
-            if (!username.matches(Regex("^[A-Za-z\\s]{2,}$"))) {
-                usernameField.error = "Name must contain only letters, at least 2 characters"
+            if (!username.matches(Regex("^[A-Za-z ]{2,60}$"))) {
+                usernameField.error = "Name must contain 2–60 letters or spaces"
                 usernameField.requestFocus(); return@setOnClickListener
             }
             if (email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
@@ -85,8 +84,13 @@ class SignupFragment : Fragment() {
             // ──────────────────────────────────────────────────────────────
 
             signupBtn.isEnabled = false
-            signupBtn.text = "Creating account\u2026"
+            signupBtn.text = getString(R.string.pv_creating_account)
             signUpUser(username, email, password, signupBtn)
+        }
+
+        // FIX: make the "Already have an account? Login" link actually work.
+        view.findViewById<View>(R.id.backToLogin)?.setOnClickListener {
+            findNavController().navigate(R.id.action_endgameFragment_to_gameFragment)
         }
     }
 
@@ -97,20 +101,15 @@ class SignupFragment : Fragment() {
         btn: MaterialButton
     ) {
         auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-            // FIX 3: guard against the fragment dying before Firebase responds.
-            if (!isAdded) return@addOnCompleteListener
-            btn.isEnabled = true
-            btn.text = "Sign up"
-
             if (task.isSuccessful) {
-                val user = auth.currentUser
+                val user = task.result?.user
                 if (user != null) {
                     // 🔒 Save profile keyed by UID
                     FirebaseHelper.ref("users")
                         .child(user.uid)
                         .setValue(User(username, email))
                         .addOnFailureListener {
-                            if (!isAdded) return@addOnFailureListener
+                            if (view == null) return@addOnFailureListener
                             Toast.makeText(
                                 context,
                                 "Profile save failed. You may re-save from Profile.",
@@ -119,35 +118,31 @@ class SignupFragment : Fragment() {
                         }
 
                     // 📧 Send email verification before navigating away
-                    user.sendEmailVerification().addOnCompleteListener emailVerification@{
-                        // FIX 3: guard the nested callback too.
-                        if (!isAdded) return@emailVerification
+                    user.sendEmailVerification().addOnCompleteListener emailVerification@{ verification ->
+                        if (auth.currentUser?.uid == user.uid) auth.signOut()
+                        if (view == null) return@emailVerification
+                        btn.isEnabled = true
+                        btn.text = getString(R.string.pv_sign_up)
                         Toast.makeText(
                             context,
-                            "Account created! Please verify your email before logging in.",
+                            if (verification.isSuccessful) "Account created. Check your email to verify it."
+                            else "Account created. Sign in to request another verification email.",
                             Toast.LENGTH_LONG
                         ).show()
                         findNavController().navigate(R.id.action_endgameFragment_to_gameFragment)
                     }
                 } else {
+                    if (view == null) return@addOnCompleteListener
+                    btn.isEnabled = true
+                    btn.text = getString(R.string.pv_sign_up)
                     Toast.makeText(context, "Account created! Please log in.", Toast.LENGTH_SHORT).show()
                     findNavController().navigate(R.id.action_endgameFragment_to_gameFragment)
                 }
             } else {
-                if (task.exception is FirebaseAuthUserCollisionException) {
-                    // 🔒 Don't confirm whether the email is registered
-                    Toast.makeText(
-                        context,
-                        "Could not create account. Please try a different email.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    Toast.makeText(
-                        context,
-                        "Registration failed. Please try again.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                if (view == null) return@addOnCompleteListener
+                btn.isEnabled = true
+                btn.text = getString(R.string.pv_sign_up)
+                Toast.makeText(context, "Registration failed. Please try again.", Toast.LENGTH_SHORT).show()
             }
         }
     }

@@ -34,6 +34,9 @@ class NotificationWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
     }
 
     override fun doWork(): Result {
+        if (!NotificationHelper.hasPermission(applicationContext) ||
+            !NotificationHelper.isEnabledInPrefs(applicationContext)) return Result.success()
+
         val prefs = applicationContext.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
         val count = prefs.getInt(KEY_COUNT, 0)
         prefs.edit().putInt(KEY_COUNT, count + 1).apply()
@@ -56,10 +59,6 @@ class NotificationWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
         // FIX 8: tapping the notification opens the app (was a no-op before).
         val openIntent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            // Bonus: pass the most recent title so a future deep-link can use it.
-            ReadingHistoryManager.getHistory(applicationContext).firstOrNull()?.let {
-                putExtra("open_title", it)
-            }
         }
         val contentIntent = PendingIntent.getActivity(
             applicationContext,
@@ -69,6 +68,7 @@ class NotificationWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
         )
 
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))

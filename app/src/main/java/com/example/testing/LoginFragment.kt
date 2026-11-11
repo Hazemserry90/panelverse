@@ -25,6 +25,8 @@ class LoginFragment : Fragment() {
         private const val PREF_FILE = "anime_app_prefs"
         private const val KEY_FAILED = "login_failed_attempts"
         private const val KEY_LOCKOUT_UNTIL = "login_lockout_until"
+        private const val KEY_LAST_VERIFICATION = "last_verification_email"
+        private const val VERIFICATION_COOLDOWN = 60_000L
     }
 
     private var failedAttempts = 0
@@ -95,6 +97,11 @@ class LoginFragment : Fragment() {
             }
             resetPassword(email)
         }
+
+        // FIX: link from Login to Signup.
+        view.findViewById<View>(R.id.goToSignup)?.setOnClickListener {
+            findNavController().navigate(R.id.action_gameFragment_to_endgameFragment)
+        }
     }
 
     // ── Lockout persistence (FIX 6) ────────────────────────────────────────
@@ -139,14 +146,23 @@ class LoginFragment : Fragment() {
         }
 
         loginButton.isEnabled = false
-        loginButton.text = "Logging in\u2026"
+        loginButton.text = getString(R.string.pv_logging_in)
 
         auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-            // FIX 3: guard against the fragment dying before Firebase responds.
-            if (!isAdded) return@addOnCompleteListener
+            if (task.isSuccessful && task.result?.user?.isEmailVerified != true && view == null) {
+                val uid = task.result?.user?.uid
+                if (uid != null && auth.currentUser?.uid == uid) auth.signOut()
+                return@addOnCompleteListener
+            }
+            if (!isAdded || view == null) return@addOnCompleteListener
             loginButton.isEnabled = !isLockedOut
-            loginButton.text = "Login"
+            loginButton.text = getString(R.string.pv_login_txt)
             if (task.isSuccessful) {
+                val user = task.result?.user
+                if (user == null || !user.isEmailVerified) {
+                    if (user != null) resendVerification(user)
+                    return@addOnCompleteListener
+                }
                 failedAttempts = 0
                 clearLockoutPrefs()
                 updateAttemptsUI()
@@ -154,6 +170,25 @@ class LoginFragment : Fragment() {
             } else {
                 handleFailedLogin()
             }
+        }
+    }
+
+    private fun resendVerification(user: com.google.firebase.auth.FirebaseUser) {
+        val now = System.currentTimeMillis()
+        if (now - prefs.getLong(KEY_LAST_VERIFICATION, 0L) in 0 until VERIFICATION_COOLDOWN) {
+            if (auth.currentUser?.uid == user.uid) auth.signOut()
+            Toast.makeText(context, "Verify your email before signing in.", Toast.LENGTH_LONG).show()
+            return
+        }
+        prefs.edit().putLong(KEY_LAST_VERIFICATION, now).apply()
+        loginButton.isEnabled = false
+        user.sendEmailVerification().addOnCompleteListener { task ->
+            if (auth.currentUser?.uid == user.uid) auth.signOut()
+            if (view == null) return@addOnCompleteListener
+            loginButton.isEnabled = !isLockedOut
+            val message = if (task.isSuccessful) "Check your inbox for a verification link."
+                else "Verify your email before signing in. You can try again shortly."
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -197,7 +232,7 @@ class LoginFragment : Fragment() {
         lockoutTimer?.cancel()
         lockoutTimer = object : CountDownTimer(durationMillis, 1000) {
             override fun onTick(ms: Long) {
-                lockoutMessage?.text = "Too many failed attempts. Try again in ${ms / 1000}s."
+                lockoutMessage?.text = getString(R.string.pv_lockout_countdown, ms / 1000)
             }
 
             override fun onFinish() {

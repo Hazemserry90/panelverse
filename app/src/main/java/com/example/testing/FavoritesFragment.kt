@@ -1,7 +1,6 @@
 package com.example.testing
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,13 +28,6 @@ class FavoritesFragment : Fragment() {
         emptyMessage = view.findViewById(R.id.emptyMessage)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        // BUG 8 FIX: FavoritesFragment is now shown as a proper tab by NavbarFragment
-        // (via show()/hide()). The back button is no longer needed for tab navigation.
-        view.findViewById<TextView>(R.id.btnBack)?.setOnClickListener {
-            // Delegate to the NavbarFragment to go back to Home tab
-            (parentFragment as? NavbarFragment)?.switchToTab(R.id.homep)
-        }
-
         val user = FirebaseAuth.getInstance().currentUser
         if (user == null) {
             showEmpty("Please login to view favorites")
@@ -49,7 +41,7 @@ class FavoritesFragment : Fragment() {
         favListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!isAdded) return
-                Log.d("MangaFav", "FavoritesFragment onDataChange count=${snapshot.childrenCount}")
+
                 val favIds = snapshot.children
                     .filter { it.getValue(Boolean::class.java) == true }
                     .mapNotNull { it.key }
@@ -74,8 +66,8 @@ class FavoritesFragment : Fragment() {
 
             override fun onCancelled(error: DatabaseError) {
                 if (!isAdded) return
-                Log.e("MangaFav", "FavoritesFragment cancelled: ${error.message} — ${error.details}")
-                showEmpty("Could not load favorites.\n${error.message}")
+
+                showEmpty("Could not load favorites. Please try again.")
             }
         }
         favRef!!.addValueEventListener(favListener!!)

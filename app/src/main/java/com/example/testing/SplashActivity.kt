@@ -23,7 +23,7 @@ class SplashActivity : AppCompatActivity() {
         // BUG 14 FIX: Respect system theme on first launch instead of forcing dark mode
         val prefs = getSharedPreferences("anime_app_prefs", MODE_PRIVATE)
         val nightMode = when {
-            !prefs.contains("dark_mode") -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+            !prefs.contains("dark_mode") -> AppCompatDelegate.MODE_NIGHT_YES
             prefs.getBoolean("dark_mode", true) -> AppCompatDelegate.MODE_NIGHT_YES
             else -> AppCompatDelegate.MODE_NIGHT_NO
         }

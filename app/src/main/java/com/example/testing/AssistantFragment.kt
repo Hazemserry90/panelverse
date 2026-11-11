@@ -109,7 +109,7 @@ class AssistantFragment : Fragment() {
         val message = view?.findViewById<TextView>(R.id.assistantMessage)
         val history = ReadingHistoryManager.getHistory(requireContext())
         if (history.isEmpty()) {
-            message?.text = "You haven't read anything yet. Open a title and it will appear here so I can suggest similar ones."
+            message?.text = getString(R.string.pv_assistant_no_history)
             setSuggestions(HomeFragment.catalogue.shuffled().take(8))
             return
         }

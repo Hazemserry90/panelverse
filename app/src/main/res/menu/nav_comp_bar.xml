@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:title="Home"
+    <item android:title="@string/pv_home"
         android:icon="@drawable/baseline_home_24"
         android:id="@+id/homep"/>
-    <item android:title="AI"
+    <item android:title="@string/pv_ai"
         android:icon="@drawable/ic_ai"
         android:id="@+id/ai"/>
-    <item android:title="Saved"
+    <item android:title="@string/pv_saved_2"
         android:icon="@android:drawable/btn_star_big_off"
         android:id="@+id/favorites"/>
-    <item android:title="Profile"
+    <item android:title="@string/pv_profile"
         android:icon="@drawable/baseline_account_circle_24"
         android:id="@+id/profile"/>
-    <item android:title="Settings"
+    <item android:title="@string/pv_settings_2"
         android:icon="@drawable/baseline_settings_24"
         android:id="@+id/settings"/>
 </menu>

@@ -8,169 +8,112 @@
     android:background="@color/bg_dark"
     tools:context=".AssistantFragment">
 
-    <!-- ═══════════════════  AI MASTHEAD  ═══════════════════ -->
+    <!-- ═══════════════════  COMPACT HEADER  ═══════════════════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@drawable/bg_gradient_header"
-        android:paddingTop="40dp"
-        android:paddingBottom="16dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp">
+        android:paddingTop="38dp"
+        android:paddingBottom="10dp"
+        android:paddingStart="@dimen/screen_padding_h"
+        android:paddingEnd="@dimen/screen_padding_h">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <View
-                android:layout_width="5dp"
-                android:layout_height="48dp"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/bg_ink_bar" />
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="AI"
-                    android:textColor="@color/text_primary"
-                    android:textSize="26sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="-0.02"
-                    android:lineSpacingMultiplier="0.9" />
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="ASSISTANT"
-                        android:textColor="@color/accent_ink"
-                        android:textSize="26sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="-0.02"
-                        android:lineSpacingMultiplier="0.9" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:text="🤖"
-                        android:textSize="16sp" />
-                </LinearLayout>
-            </LinearLayout>
-        </LinearLayout>
+            android:layout_marginTop="2dp"
+            android:text="@string/pv_assistant"
+            android:textAppearance="@style/TextAppearance.PanelVerse.Display"
+            android:textSize="24sp" />
 
         <TextView
             android:id="@+id/assistantSubtitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="Tell me what you're in the mood for and I'll suggest manga or comics."
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
-
-        <!-- Input row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <EditText
-                android:id="@+id/interestInput"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_input_field"
-                android:hint="e.g. dark superhero stories"
-                android:textColorHint="@color/text_muted"
-                android:textColor="@color/text_primary"
-                android:textSize="13sp"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:inputType="text"
-                android:imeOptions="actionSearch"
-                android:maxLines="1"
-                android:singleLine="true" />
-
-            <TextView
-                android:id="@+id/btnSuggest"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:layout_marginStart="8dp"
-                android:text="SUGGEST"
-                android:textColor="@color/white"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.08"
-                android:paddingStart="18dp"
-                android:paddingEnd="18dp"
-                android:gravity="center"
-                android:background="@drawable/bg_ink_bar"
-                android:clickable="true"
-                android:focusable="true" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/btnFromHistory"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="📖  Recommend from my reading history"
-            android:textColor="@color/accent_ink"
+            android:layout_marginTop="2dp"
+            android:text="@string/pv_tell_me_what_you_re_in_the_mood_for_and_i_ll"
+            android:textColor="@color/text_muted"
             android:textSize="12sp"
-            android:textStyle="bold"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true" />
+            android:maxLines="2"
+            android:ellipsize="end" />
     </LinearLayout>
 
-    <!-- ═══════════════════  INTERESTS  ═══════════════════ -->
+    <!-- ═══════════════════  INPUT + SUGGEST (one row)  ═══════════════════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/screen_padding_h"
+        android:layout_marginEnd="@dimen/screen_padding_h"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="4dp">
+        android:gravity="center_vertical">
 
-        <View
-            android:layout_width="4dp"
-            android:layout_height="16dp"
-            android:background="@color/accent_ink" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:text="PICK YOUR INTERESTS"
+        <EditText
+            android:id="@+id/interestInput"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_input_field"
+            android:hint="@string/pv_e_g_dark_superhero_stories"
+            android:textColorHint="@color/text_muted"
             android:textColor="@color/text_primary"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.12" />
+            android:textSize="14sp"
+            android:paddingStart="@dimen/space_md"
+            android:paddingEnd="@dimen/space_md"
+            android:inputType="text"
+            android:importantForAutofill="no"
+            android:imeOptions="actionDone"
+            android:maxLines="1"
+            android:singleLine="true" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSuggest"
+            style="@style/Widget.PanelVerse.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="50dp"
+            android:layout_marginStart="10dp"
+            android:minWidth="0dp"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="@string/pv_suggest" />
     </LinearLayout>
+
+    <!-- secondary, compact link -->
+    <TextView
+        android:id="@+id/btnFromHistory"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:text="@string/pv_from_my_reading_history"
+        android:textColor="@color/accent_cyan"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackgroundBorderless" />
+
+    <!-- ═══════════════════  INTERESTS (compact)  ═══════════════════ -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/screen_padding_h"
+        android:layout_marginTop="@dimen/space_sm"
+        android:layout_marginBottom="6dp"
+        android:text="@string/pv_pick_your_interests"
+        android:textAppearance="@style/TextAppearance.PanelVerse.Section" />
 
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:scrollbars="none"
-        android:paddingTop="4dp"
-        android:paddingBottom="8dp"
+        android:paddingBottom="6dp"
         android:fadingEdgeLength="20dp"
         android:requiresFadingEdge="horizontal">
 
@@ -179,33 +122,33 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
+            android:paddingStart="@dimen/screen_padding_h"
+            android:paddingEnd="@dimen/screen_padding_h"
             android:gravity="center_vertical" />
     </HorizontalScrollView>
 
-    <!-- ═══════════════════  ASSISTANT MESSAGE  ═══════════════════ -->
+    <!-- ═══════════════════  MESSAGE (compact)  ═══════════════════ -->
     <TextView
         android:id="@+id/assistantMessage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="6dp"
-        android:padding="12dp"
-        android:background="@drawable/bg_card_rounded"
-        android:text="👋 Hi! Pick some interests or type what you're in the mood for."
+        android:layout_marginStart="@dimen/screen_padding_h"
+        android:layout_marginEnd="@dimen/screen_padding_h"
+        android:layout_marginBottom="8dp"
+        android:padding="10dp"
+        android:background="@drawable/bg_section_card"
+        android:text="@string/pv_hi_pick_some_interests_or_type_what_you_re_in"
         android:textColor="@color/text_secondary"
         android:textSize="12sp"
         android:lineSpacingMultiplier="1.2" />
 
-    <!-- ═══════════════════  SUGGESTIONS  ═══════════════════ -->
+    <!-- ═══════════════════  RESULTS  ═══════════════════ -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/suggestionRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingBottom="90dp"
+        android:paddingBottom="100dp"
         android:clipToPadding="false"
         tools:listitem="@layout/item_manga_card" />
 
