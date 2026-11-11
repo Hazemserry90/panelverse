@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.kotlin.android)
 }
+
+// FIX: release signing — credentials live in keystore.properties (git-ignored).
+val keystorePropsFile = providers.environmentVariable("PANELVERSE_RELEASE_SIGNING_PROPERTIES")
+    .orNull?.let { rootProject.file(it) } ?: rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use { load(it) }
+}
+val hasReleaseKeystore = keystorePropsFile.exists()
 
 android {
     namespace = "com.example.testing"
@@ -12,9 +22,20 @@ android {
         applicationId = "com.example.testing"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 9
+        versionName = "1.8"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (hasReleaseKeystore) {
+                storeFile = keystorePropsFile.parentFile.resolve(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -26,6 +47,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // A release without the owner’s signing configuration is unsigned.
+            signingConfig = if (hasReleaseKeystore) signingConfigs.getByName("release") else null
         }
     }
     compileOptions {
@@ -47,16 +70,16 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation(libs.recyclerview)
+    implementation(libs.navigation.fragment.ktx)
+    implementation(libs.navigation.ui.ktx)
+    implementation(libs.gif.drawable)
+    implementation(libs.coil)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.database)
     implementation(libs.firebase.inappmessaging)
     // FIX 7: exactly one WorkManager dependency (Kotlin artifact) from the version catalog
     implementation(libs.work.runtime)
-    implementation("androidx.navigation:navigation-fragment-ktx:2.8.4")
-    implementation("androidx.navigation:navigation-ui-ktx:2.8.4")
-    implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.29")
-    implementation("io.coil-kt:coil:2.6.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

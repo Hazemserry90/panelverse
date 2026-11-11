@@ -33,3 +33,10 @@
 -keep class * extends androidx.work.Worker {
     public <init>(...);
 }
+
+# Remove app and dependency debug logging from minified builds.
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}

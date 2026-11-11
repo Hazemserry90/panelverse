@@ -17,6 +17,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
+import java.util.Locale
 
 class ProfileFragment : Fragment() {
 
@@ -47,7 +48,10 @@ class ProfileFragment : Fragment() {
     // app-wide (screenshots blocked everywhere). Only apply it while actually visible.
     override fun onResume() {
         super.onResume()
-        if (!isHidden) applySecureFlag()
+        if (!isHidden) {
+            applySecureFlag()
+            refreshReadingData()
+        }
     }
 
     override fun onPause() {
@@ -57,7 +61,21 @@ class ProfileFragment : Fragment() {
 
     override fun onHiddenChanged(hidden: Boolean) {
         super.onHiddenChanged(hidden)
-        if (hidden) clearSecureFlag() else applySecureFlag()
+        if (hidden) {
+            clearSecureFlag()
+        } else {
+            applySecureFlag()
+            // FIX: the tab host caches fragments with show()/hide(), so onViewCreated runs
+            // only once. Refresh history/stats every time Profile becomes visible.
+            refreshReadingData()
+        }
+    }
+
+    /** Reloads the "Recently Read" list and the stat counters. */
+    private fun refreshReadingData() {
+        if (!isAdded || view == null) return
+        loadReadingHistory()
+        loadStats()
     }
 
     private fun applySecureFlag() {
@@ -96,8 +114,8 @@ class ProfileFragment : Fragment() {
                 usernameEditText.requestFocus()
                 return@setOnClickListener
             }
-            if (!newUsername.matches(Regex("^[A-Za-z\\s]{2,}$"))) {
-                usernameEditText.error = "Name must contain only letters, at least 2 characters"
+            if (!newUsername.matches(Regex("^[A-Za-z ]{2,60}$"))) {
+                usernameEditText.error = "Name must contain 2–60 letters or spaces"
                 usernameEditText.requestFocus()
                 return@setOnClickListener
             }
@@ -107,6 +125,10 @@ class ProfileFragment : Fragment() {
         // ── Logout ─────────────────────────────────────────────────────────
         view.findViewById<View>(R.id.logoutButton).setOnClickListener {
             auth.signOut()
+            ReadingHistoryManager.clearHistory(requireContext())
+            val cookies = android.webkit.CookieManager.getInstance()
+            cookies.removeAllCookies { cookies.flush() }
+            android.webkit.WebStorage.getInstance().deleteAllData()
             Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
             // BUG 12 FIX: Use findNavController() directly instead of
             // Navigation.findNavController(activity, R.id.fragmentContainerView) which
@@ -188,7 +210,7 @@ class ProfileFragment : Fragment() {
     private fun loadStats() {
         // History count from SharedPreferences
         val history = ReadingHistoryManager.getHistory(requireContext())
-        historyCount.text = history.size.toString()
+        historyCount.text = String.format(Locale.getDefault(), "%d", history.size)
 
         // Favorites count from Firebase
         val currentUser = auth.currentUser
@@ -203,7 +225,7 @@ class ProfileFragment : Fragment() {
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (!isAdded) return
-                    favoritesCount.text = snapshot.childrenCount.toString()
+                    favoritesCount.text = String.format(Locale.getDefault(), "%d", snapshot.childrenCount)
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -232,7 +254,7 @@ class ProfileFragment : Fragment() {
         val ctx = requireContext()
         for (title in history) {
             val item = TextView(ctx)
-            item.text = "\u2022 $title"
+            item.text = getString(R.string.pv_history_bullet, title)
             item.setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary))
             item.textSize = 14f
 

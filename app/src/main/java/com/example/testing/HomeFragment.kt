@@ -1,10 +1,8 @@
 package com.example.testing
 
-import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,6 +11,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
@@ -295,11 +294,41 @@ class HomeFragment : Fragment() {
         setupRecyclerView(view)
         setupSearchView(view)
         setupCategoryChips(view)
-        setupFavoritesButton(view)
+        view.findViewById<View>(R.id.btnHomeOffline).setOnClickListener { OfflineActivity.open(requireContext()) }
+        view.findViewById<View>(R.id.btnHomeProfile).setOnClickListener {
+            (parentFragment as? NavbarFragment)?.switchToTab(R.id.profile)
+        }
+        bindHomeFeature(view)
         setupComicButtons(view)
         // BUG 9 FIX: Listener is attached in onStart and detached in onStop so it
         // is correctly paired even when the fragment is shown/hidden by NavbarFragment.
     }
+
+    override fun onResume() {
+        super.onResume()
+        view?.let(::bindHomeFeature)
+    }
+
+    private fun bindHomeFeature(root: View) {
+        val lastTitle = ReadingHistoryManager.getHistory(requireContext()).firstOrNull()
+        val recent = catalogue.firstOrNull { it.title == lastTitle }
+        val series = recent ?: catalogue.firstOrNull() ?: return
+        root.findViewById<android.widget.ImageView>(R.id.homeFeatureCover).setImageResource(series.coverResId)
+        root.findViewById<TextView>(R.id.homeFeatureTitle).text = series.title
+        root.findViewById<TextView>(R.id.homeFeatureLabel).setText(
+            if (recent == null) R.string.pv_ink_first else R.string.pv_ink_recent
+        )
+        root.findViewById<TextView>(R.id.homeFeatureAction).apply {
+            val canResume = recent != null && ReadingHistoryManager.getProgress(requireContext(), series.id) != null
+            setText(if (canResume) R.string.pv_ink_resume else R.string.pv_ink_open)
+            setOnClickListener {
+                if (canResume) ReaderActivity.open(requireContext(), series)
+                else openSeries(series)
+            }
+        }
+    }
+
+    private fun openSeries(series: MangaItem) = SeriesActivity.open(requireContext(), series)
 
     override fun onStart() {
         super.onStart()
@@ -324,10 +353,11 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupRecyclerView(view: View) {
+        val columns = (resources.configuration.screenWidthDp / 112).coerceIn(2, 6)
         recyclerView = view.findViewById<RecyclerView>(R.id.mangaRecyclerView).also { rv ->
-            rv.layoutManager = LinearLayoutManager(requireContext())
+            rv.layoutManager = GridLayoutManager(requireContext(), columns)
             // BUG 6 FIX: Use the companion-level catalogue (built once) not per-instance list.
-            adapter = MangaAdapter(requireContext(), catalogue)
+            adapter = MangaAdapter(requireContext(), catalogue).apply { useGrid = true }
             rv.adapter = adapter
         }
         adapter?.onFilterResult = { count -> updateResultUi(count) }
@@ -337,16 +367,15 @@ class HomeFragment : Fragment() {
     /** Updates the section count and the comic empty-state bubble. */
     private fun updateResultUi(count: Int) {
         emptyView?.visibility = if (count == 0) View.VISIBLE else View.GONE
-        sectionTitle?.text = if (count == 0) "NO TITLES" else "TITLES · $count"
+        sectionTitle?.text = getString(R.string.pv_ink_browse, count)
     }
 
     private fun setupSearchView(view: View) {
         val searchEdit = view.findViewById<EditText>(R.id.mangaSearchEditText) ?: return
-        searchEdit.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary))
-        searchEdit.setHintTextColor(ContextCompat.getColor(requireContext(), R.color.text_muted))
         searchEdit.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                view.findViewById<View>(R.id.homeFeature).visibility = if (s.isNullOrBlank()) View.VISIBLE else View.GONE
                 adapter?.filterByQuery(s?.toString())
             }
             override fun afterTextChanged(s: Editable?) {}
@@ -360,6 +389,9 @@ class HomeFragment : Fragment() {
             val chip = TextView(requireContext()).apply {
                 text = category
                 textSize = 12f
+                minHeight = dp(44)
+                gravity = android.view.Gravity.CENTER
+                isSelected = i == 0
                 setPadding(dp(14), dp(6), dp(14), dp(6))
                 setBackgroundResource(if (i == 0) R.drawable.bg_chip_selected else R.drawable.bg_chip_unselected)
                 setTextColor(ContextCompat.getColor(requireContext(),
@@ -372,9 +404,11 @@ class HomeFragment : Fragment() {
             chips[i] = chip
             chip.setOnClickListener {
                 chips.forEachIndexed { _, c ->
+                    c?.isSelected = false
                     c?.setBackgroundResource(R.drawable.bg_chip_unselected)
                     c?.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
                 }
+                chip.isSelected = true
                 chip.setBackgroundResource(R.drawable.bg_chip_selected)
                 chip.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
                 adapter?.filterByCategory(category)
@@ -383,28 +417,10 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun setupFavoritesButton(view: View) {
-        view.findViewById<TextView>(R.id.btnViewFavorites)?.setOnClickListener {
-            // BUG 7 FIX: Instead of manually replacing fragments with a mismatched back stack,
-            // delegate to NavbarFragment to switch to the Favorites tab properly.
-            // This keeps the BottomNavigationView in sync and uses a single consistent
-            // fragment manager / back stack.
-            (parentFragment as? NavbarFragment)?.switchToTab(R.id.favorites)
-        }
-    }
-
     private fun setupComicButtons(view: View) {
         // Comic trick: "Surprise me" opens a random title.
         view.findViewById<View>(R.id.fabRandom)?.setOnClickListener {
-            val list = catalogue
-            if (list.isNotEmpty()) {
-                val pick = list.random()
-                ReadingHistoryManager.addToHistory(requireContext(), pick.title)
-                startActivity(Intent(requireContext(), ReaderActivity::class.java).apply {
-                    putExtra("url", pick.url)
-                    putExtra("title", pick.title)
-                })
-            }
+            catalogue.randomOrNull()?.let(::openSeries)
         }
         fabTop?.setOnClickListener { recyclerView?.smoothScrollToPosition(0) }
         recyclerView?.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -430,7 +446,7 @@ class HomeFragment : Fragment() {
             }
             // BUG 22 FIX: Log Firebase errors instead of silently swallowing them.
             override fun onCancelled(error: DatabaseError) {
-                Log.e("HomeFragment", "Favorites listener cancelled: ${error.message} — ${error.details}")
+
             }
         }
         favRef!!.addValueEventListener(favListener!!)

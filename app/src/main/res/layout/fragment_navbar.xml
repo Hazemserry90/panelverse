@@ -5,14 +5,14 @@
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
 
-    <!-- Content host: fills all space above the nav bar -->
+    <!-- Content host -->
     <FrameLayout
         android:id="@+id/framelayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@+id/bottomNavContainer" />
 
-    <!-- Bottom navigation container -->
+    <!-- Floating bottom navigation pill -->
     <LinearLayout
         android:id="@+id/bottomNavContainer"
         android:layout_width="match_parent"
@@ -20,22 +20,15 @@
         android:orientation="vertical"
         android:layout_alignParentBottom="true"
         android:background="@drawable/bg_bottom_nav"
-        android:elevation="20dp">
-
-        <!-- Thin top separator line -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/card_border"
-            android:alpha="0.6" />
+        android:paddingTop="1dp">
 
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/nav_comp_bar"
             android:layout_width="match_parent"
-            android:layout_height="68dp"
+            android:layout_height="@dimen/nav_bar_height"
             android:background="@android:color/transparent"
-            app:itemIconTint="@color/bottom_nav_unselected"
-            app:itemTextColor="@color/bottom_nav_unselected"
+            app:itemIconTint="@color/ink_nav_tint"
+            app:itemTextColor="@color/ink_nav_tint"
             app:labelVisibilityMode="labeled"
             app:menu="@menu/nav_comp_bar" />
 

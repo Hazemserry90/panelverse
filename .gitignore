@@ -29,3 +29,8 @@ app/google-services.json
 .DS_Store
 .externalNativeBuild/
 .cxx/
+
+# Local release signing
+keystore.properties
+*.jks
+*.keystore

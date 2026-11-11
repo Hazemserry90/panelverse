@@ -1,11 +1,8 @@
 package com.example.testing
 
 import android.content.Context
-import android.content.Intent
 import android.content.res.ColorStateList
-import android.util.Log
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -50,8 +47,12 @@ class MangaAdapter(
         val spineAccent: View = itemView.findViewById(R.id.spineAccent)
     }
 
+    /** When true, inflates the two-column grid card (tablets / foldables). */
+    var useGrid: Boolean = false
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val v = LayoutInflater.from(context).inflate(R.layout.item_manga_card, parent, false)
+        val layout = if (useGrid) R.layout.item_manga_card_grid else R.layout.item_manga_card
+        val v = LayoutInflater.from(context).inflate(layout, parent, false)
         return ViewHolder(v)
     }
 
@@ -71,20 +72,9 @@ class MangaAdapter(
         }
         holder.titleText.text = item.title
         holder.categoryChip.text = item.category
-        applyChipStyle(holder.categoryChip, item.category)
-        applySpineStyle(holder.spineAccent, item.category)
-        holder.favoriteBtn.text = if (item.isFavorite) "❤️" else "🤍"
-
-        // Comic trick: the whole panel squeezes slightly while pressed.
-        holder.cardClickArea.setOnTouchListener { v, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN ->
-                    v.animate().scaleX(0.965f).scaleY(0.965f).setDuration(80).start()
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
-            }
-            false
-        }
+        if (!useGrid) applyChipStyle(holder.categoryChip, item.category)
+        if (!useGrid) applySpineStyle(holder.spineAccent, item.category)
+        holder.favoriteBtn.text = if (item.isFavorite) "★" else "☆"
 
         // FIX 4: use NO_POSITION (correct constant) and getItem(pos).
         holder.favoriteBtn.setOnClickListener {
@@ -96,14 +86,7 @@ class MangaAdapter(
         holder.cardClickArea.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
-            val current = getItem(pos)
-            ReadingHistoryManager.addToHistory(context, current.title)
-            val intent = Intent(context, ReaderActivity::class.java).apply {
-                putExtra("url", current.url)
-                putExtra("title", current.title)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
+            SeriesActivity.open(context, getItem(pos))
         }
     }
 
@@ -122,10 +105,8 @@ class MangaAdapter(
 
         val task = if (newFav) ref.setValue(true) else ref.removeValue()
         task.addOnSuccessListener {
-            Log.d("MangaFav", "Firebase ${if (newFav) "write" else "remove"} SUCCESS id=${item.id}")
             ComicBubble.show(context, if (newFav) "Added to Saved! \uD83D\uDD25" else "Removed from Saved")
-        }.addOnFailureListener { e ->
-            Log.e("MangaFav", "Firebase FAILED id=${item.id}", e)
+        }.addOnFailureListener {
             // Rollback via resubmit (not notifyDataSetChanged).
             setFavorite(item.id, !newFav)
             ComicBubble.show(context, "Couldn't update favourite")

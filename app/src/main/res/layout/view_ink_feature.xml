@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/homeFeature"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="16dp"
+    android:background="@drawable/bg_ink_panel"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <ImageView
+        android:id="@+id/homeFeatureCover"
+        android:layout_width="72dp"
+        android:layout_height="108dp"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/homeFeatureLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_ink_caption"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="3dp"
+            android:textColor="#121212"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/homeFeatureTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textAppearance="@style/TextAppearance.PanelVerse.Display"
+            android:textSize="24sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/homeFeatureAction"
+            style="@style/Widget.PanelVerse.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:textAllCaps="false" />
+    </LinearLayout>
+</LinearLayout>

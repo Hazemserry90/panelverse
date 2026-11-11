@@ -8,130 +8,81 @@
     android:background="@color/bg_dark"
     tools:context=".HomeFragment">
 
-    <!-- ═══════════════════  MANGA MASTHEAD HEADER  ═══════════════════ -->
+    <!-- ═══════════════════  TOP BAR  ═══════════════════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/bg_gradient_header"
-        android:paddingTop="40dp"
-        android:paddingBottom="16dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="44dp"
+        android:paddingBottom="12dp"
+        android:paddingStart="@dimen/screen_padding_h"
+        android:paddingEnd="@dimen/screen_padding_h">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <TextView
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <View
-                    android:layout_width="5dp"
-                    android:layout_height="48dp"
-                    android:layout_marginEnd="12dp"
-                    android:background="@drawable/bg_ink_bar"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="PANEL"
-                        android:textColor="@color/text_primary"
-                        android:textSize="26sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="-0.02"
-                        android:lineSpacingMultiplier="0.9"/>
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="VERSE"
-                            android:textColor="@color/accent_ink"
-                            android:textSize="26sp"
-                            android:textStyle="bold"
-                            android:letterSpacing="-0.02"
-                            android:lineSpacingMultiplier="0.9"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="漫画"
-                            android:textColor="@color/text_muted"
-                            android:textSize="13sp"
-                            android:textStyle="bold"/>
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/btnViewFavorites"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="❤  SAVED"
-                android:textColor="@color/white"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.08"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:gravity="center"
-                android:background="@drawable/bg_ink_bar"
-                android:clickable="true"
-                android:focusable="true"/>
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="14dp"
-            android:background="@color/accent_ink"
-            android:alpha="0.4"/>
-
-        <EditText
-            android:id="@+id/mangaSearchEditText"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:background="@drawable/bg_input_field"
-            android:hint="🔍  Search titles…"
-            android:textColorHint="@color/text_muted"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp"
-            android:paddingStart="18dp"
-            android:paddingEnd="18dp"
-            android:inputType="text"
-            android:imeOptions="actionSearch"
+            android:layout_weight="1"
+            android:text="@string/pv_ink_wordmark"
+            android:textAppearance="@style/TextAppearance.PanelVerse.Display"
+            android:textSize="30sp"
             android:maxLines="1"
-            android:singleLine="true"/>
+            android:ellipsize="end" />
 
+        <TextView
+            android:id="@+id/btnHomeOffline"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:paddingHorizontal="8dp"
+            android:text="@string/pv_offline_short"
+            android:textAllCaps="false"
+            style="@style/Widget.PanelVerse.Button.Outlined" />
+
+        <TextView
+            android:id="@+id/btnHomeProfile"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="@string/pv_profile"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.10"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:gravity="center"
+            android:background="@drawable/bg_ink_panel"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="@string/pv_ink_profile" />
     </LinearLayout>
+
+    <!-- ═══════════════════  SEARCH  ═══════════════════ -->
+    <EditText
+        android:id="@+id/mangaSearchEditText"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginStart="@dimen/screen_padding_h"
+        android:layout_marginEnd="@dimen/screen_padding_h"
+        android:background="@drawable/bg_ink_search"
+        android:hint="@string/pv_search_manga_comics"
+        android:textColorHint="#5F5A52"
+        android:textColor="#121212"
+        android:textSize="14sp"
+        android:paddingStart="@dimen/space_md"
+        android:paddingEnd="@dimen/space_md"
+        android:inputType="text"
+        android:importantForAutofill="no"
+        android:imeOptions="actionSearch"
+        android:maxLines="1"
+        android:singleLine="true" />
 
     <!-- ═══════════════════  CATEGORY CHIPS  ═══════════════════ -->
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:scrollbars="none"
-        android:background="@color/bg_dark"
-        android:paddingTop="12dp"
-        android:paddingBottom="8dp"
+        android:paddingTop="@dimen/space_md"
+        android:paddingBottom="@dimen/space_xs"
         android:fadingEdgeLength="20dp"
         android:requiresFadingEdge="horizontal">
 
@@ -140,42 +91,41 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:gravity="center_vertical"/>
-
+            android:paddingStart="@dimen/screen_padding_h"
+            android:paddingEnd="@dimen/screen_padding_h"
+            android:gravity="center_vertical" />
     </HorizontalScrollView>
 
-    <!-- ══════════════════  SECTION HEADING  ══════════════════ -->
+    <include layout="@layout/view_ink_feature" />
+
+    <!-- ═══════════════════  SECTION HEADING  ═══════════════════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:paddingStart="@dimen/screen_padding_h"
+        android:paddingEnd="@dimen/screen_padding_h"
         android:paddingBottom="6dp">
-
-        <View
-            android:layout_width="4dp"
-            android:layout_height="16dp"
-            android:background="@color/accent_ink"/>
 
         <TextView
             android:id="@+id/sectionTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="10dp"
-            android:text="ALL TITLES"
-            android:textColor="@color/text_primary"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.12"/>
+            android:text="@string/pv_all_titles"
+            android:textAppearance="@style/TextAppearance.PanelVerse.Section" />
 
+        <View
+            android:layout_width="0dp"
+            android:layout_height="8dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="2"
+            android:background="@drawable/bg_ink_screentone"
+            android:importantForAccessibility="no" />
     </LinearLayout>
 
-    <!-- ══════════════════════  LIST + OVERLAYS  ══════════════════════ -->
+    <!-- ═══════════════════  LIST + OVERLAYS  ═══════════════════ -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -185,11 +135,12 @@
             android:id="@+id/mangaRecyclerView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:paddingBottom="90dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="68dp"
             android:clipToPadding="false"
-            tools:listitem="@layout/item_manga_card"/>
+            tools:listitem="@layout/item_manga_card" />
 
-        <!-- Comic empty-state bubble -->
         <LinearLayout
             android:id="@+id/emptyStateView"
             android:layout_width="wrap_content"
@@ -197,38 +148,29 @@
             android:layout_gravity="center"
             android:orientation="vertical"
             android:gravity="center"
-            android:background="@drawable/bg_speech_bubble"
+            android:background="@drawable/bg_ink_panel"
             android:paddingStart="26dp"
             android:paddingEnd="26dp"
             android:paddingTop="20dp"
-            android:paddingBottom="22dp"
+            android:paddingBottom="20dp"
             android:visibility="gone">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="😵"
-                android:textSize="38sp"/>
+                android:layout_marginTop="@dimen/space_xs"
+                android:text="@string/pv_no_titles_found"
+                android:textAppearance="@style/TextAppearance.PanelVerse.Title"
+                android:textSize="17sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="No titles found!"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Try another search or category."
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"/>
+                android:layout_marginTop="@dimen/space_xxs"
+                android:text="@string/pv_try_another_search_or_category"
+                android:textAppearance="@style/TextAppearance.PanelVerse.Caption" />
         </LinearLayout>
 
-        <!-- Comic trick: surprise me (random title) -->
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabRandom"
             android:layout_width="wrap_content"
@@ -236,13 +178,12 @@
             android:layout_gravity="bottom|end"
             android:layout_marginEnd="18dp"
             android:layout_marginBottom="18dp"
-            android:contentDescription="Surprise me"
+            android:contentDescription="@string/pv_open_a_random_title"
             app:srcCompat="@drawable/ic_dice"
             app:backgroundTint="@color/accent_ink"
             app:tint="@color/white"
-            app:fabSize="normal"/>
+            app:fabSize="normal" />
 
-        <!-- Back to top -->
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabBackToTop"
             android:layout_width="wrap_content"
@@ -251,11 +192,11 @@
             android:layout_marginEnd="26dp"
             android:layout_marginBottom="92dp"
             android:visibility="gone"
-            android:contentDescription="Back to top"
+            android:contentDescription="@string/pv_back_to_top"
             app:srcCompat="@drawable/ic_arrow_up"
             app:backgroundTint="@color/bg_elevated"
             app:tint="@color/text_primary"
-            app:fabSize="mini"/>
+            app:fabSize="mini" />
 
     </FrameLayout>
 

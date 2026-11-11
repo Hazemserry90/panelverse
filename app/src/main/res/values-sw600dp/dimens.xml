@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Larger spacing for tablets / foldables / landscape -->
+<resources>
+    <dimen name="screen_padding_h">32dp</dimen>
+    <dimen name="screen_padding_auth_h">32dp</dimen>
+    <dimen name="header_padding_top">48dp</dimen>
+</resources>

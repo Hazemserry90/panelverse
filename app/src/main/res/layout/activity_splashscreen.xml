@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_dark"
     tools:context=".SplashActivity">
 
     <!-- Full-screen GIF -->
@@ -11,15 +12,14 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:src="@drawable/ichigo"
-        android:scaleType="centerCrop"/>
+        android:scaleType="centerCrop" />
 
-    <!-- Full-screen dark scrim so text is always readable -->
+    <!-- Scrim -->
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#99000000"/>
+        android:background="#CC05050A" />
 
-    <!-- Centered branding — floats over the GIF, no box, no card -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -29,50 +29,64 @@
         android:paddingStart="40dp"
         android:paddingEnd="40dp">
 
-        <!-- App name -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="PanelVerse"
+            android:text="@string/pv_panel"
             android:textColor="@color/white"
-            android:textSize="42sp"
+            android:textSize="44sp"
             android:textStyle="bold"
+            android:letterSpacing="-0.03"
             android:gravity="center"
-            android:maxLines="1"
             android:includeFontPadding="false"
             android:shadowColor="#CC000000"
             android:shadowDx="0"
-            android:shadowDy="2"
-            android:shadowRadius="12"/>
+            android:shadowDy="3"
+            android:shadowRadius="16"
+            android:lineSpacingMultiplier="0.82" />
 
-        <!-- Purple accent line -->
-        <View
-            android:layout_width="56dp"
-            android:layout_height="3dp"
-            android:layout_marginTop="14dp"
-            android:background="@color/accent_purple"/>
-
-        <!-- Subtitle -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="Manga · Comics · Universe"
-            android:textColor="#CCffffff"
-            android:textSize="14sp"
-            android:letterSpacing="0.10"
-            android:gravity="center"/>
+            android:text="@string/pv_verse"
+            android:textColor="@color/accent_ink"
+            android:textSize="44sp"
+            android:textStyle="bold"
+            android:letterSpacing="-0.03"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:shadowColor="#CC000000"
+            android:shadowDx="0"
+            android:shadowDy="3"
+            android:shadowRadius="16"
+            android:lineSpacingMultiplier="0.82" />
+
+        <View
+            android:layout_width="64dp"
+            android:layout_height="4dp"
+            android:layout_marginTop="18dp"
+            android:background="@drawable/bg_ink_bar" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_md"
+            android:text="@string/pv_manga_comics_universe"
+            android:textColor="#CCFFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.22"
+            android:gravity="center" />
 
     </LinearLayout>
 
-    <!-- Slim progress bar pinned to very bottom -->
     <ProgressBar
         android:layout_width="120dp"
         android:layout_height="3dp"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="52dp"
+        android:layout_marginBottom="56dp"
         android:indeterminate="true"
-        android:indeterminateTint="@color/accent_purple"/>
+        android:indeterminateTint="@color/accent_ink" />
 
 </FrameLayout>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardClickArea"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="4dp"
+    android:background="@drawable/bg_ink_panel"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    android:orientation="vertical">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/mangaCover"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            app:layout_constraintDimensionRatio="H,2:3"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/mangaFavorite"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_ink_caption"
+            android:clickable="true"
+            android:contentDescription="@string/pv_toggle_favourite"
+            android:focusable="true"
+            android:gravity="center"
+            android:textColor="#121212"
+            android:textSize="22sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <View
+        android:id="@+id/spineAccent"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/panel_border" />
+
+    <TextView
+        android:id="@+id/mangaTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif-condensed"
+        android:lines="2"
+        android:paddingStart="6dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="6dp"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/mangaCategory"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="4dp"
+        android:background="@drawable/bg_ink_caption"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingHorizontal="4dp"
+        android:paddingVertical="2dp"
+        android:textColor="#121212"
+        android:textSize="11sp" />
+</LinearLayout>

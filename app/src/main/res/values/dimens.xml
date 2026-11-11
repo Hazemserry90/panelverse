@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PanelVerse design tokens — spacing, radii, sizes.
+    Use these instead of magic numbers so the system stays consistent.
+-->
+<resources>
+
+    <!-- ── Spacing scale (4dp base) ───────────────────────────────────── -->
+    <dimen name="space_xxs">4dp</dimen>
+    <dimen name="space_xs">8dp</dimen>
+    <dimen name="space_sm">12dp</dimen>
+    <dimen name="space_md">16dp</dimen>
+    <dimen name="space_lg">24dp</dimen>
+    <dimen name="space_xl">32dp</dimen>
+    <dimen name="space_xxl">40dp</dimen>
+
+    <!-- ── Screen padding ─────────────────────────────────────────────── -->
+    <dimen name="screen_padding_h">16dp</dimen>
+    <dimen name="screen_padding_auth_h">28dp</dimen>
+    <dimen name="header_padding_top">40dp</dimen>
+
+    <!-- ── Corner radii ───────────────────────────────────────────────── -->
+    <dimen name="radius_sm">8dp</dimen>
+    <dimen name="radius_md">14dp</dimen>
+    <dimen name="radius_lg">20dp</dimen>
+    <dimen name="radius_pill">100dp</dimen>
+
+    <!-- ── Controls ───────────────────────────────────────────────────── -->
+    <dimen name="touch_target">48dp</dimen>
+    <dimen name="button_height">52dp</dimen>
+    <dimen name="input_height">54dp</dimen>
+    <dimen name="nav_bar_height">64dp</dimen>
+
+    <!-- ── Type scale ─────────────────────────────────────────────────── -->
+    <dimen name="text_display">32sp</dimen>
+    <dimen name="text_title">22sp</dimen>
+    <dimen name="text_subtitle">15sp</dimen>
+    <dimen name="text_body">14sp</dimen>
+    <dimen name="text_label">11sp</dimen>
+
+</resources>
