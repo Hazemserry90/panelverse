@@ -12,22 +12,15 @@ Open this link on a phone or tablet running **Android 7 or newer**. [Download Pa
 
 ## iPhone and iPad
 
-The iOS project targets **iOS and iPadOS 17 or newer**. It includes the PanelVerse catalog, search, Favorites and reading lists stored on the device, an online reader with zoom, and offline CBZ import.
+**iPhone and iPad testing is pending.** The invitation link will appear here when the beta opens. You’ll need **iOS 17 or iPadOS 17 or newer**.
 
-To run it from source on a Mac:
+When you have an invitation:
 
-1. Open `ios/PanelVerse.xcodeproj` in Xcode and let it resolve ZIPFoundation.
-2. Select the **PanelVerse** scheme and an iPhone or iPad simulator, then press **Run**.
-3. For a physical device, connect it and choose your Apple development team in **Signing & Capabilities**. Select the device as the run destination and press **Run**. Change the bundle identifier if your team needs a unique one.
+1. Install **TestFlight** from the App Store.
+2. Open the PanelVerse invitation link on your iPhone or iPad and tap **Install** in TestFlight.
+3. Open **PanelVerse**, search for a title, and tap **Start reading**.
 
-### Build from Windows with Codemagic
-
-1. Connect the PanelVerse GitHub repository in Codemagic and select the branch with `codemagic.yaml`.
-2. Run **PanelVerse iOS simulator** to compile the app and launch it on a hosted iPhone simulator. The build provides a screenshot and simulator app under **Artifacts**. [Codemagic iOS build guide](https://docs.codemagic.io/yaml-quick-start/building-a-native-ios-app/)
-3. To install on an iPhone through TestFlight, use an Apple Developer Program membership and create the app in App Store Connect with bundle ID `com.hazemserry.panelverse`. In Codemagic, add an App Store Connect integration named **PanelVerse App Store Connect** and generate or import an Apple Distribution certificate and App Store provisioning profile for that bundle ID. [Codemagic signing guide](https://docs.codemagic.io/yaml-code-signing/signing-ios/)
-4. Run **PanelVerse iOS TestFlight**. When Apple finishes processing the upload, add testers from the **TestFlight** tab in App Store Connect. Testers install using the TestFlight invitation. [Apple TestFlight](https://developer.apple.com/testflight/)
-
-## Try PanelVerse
+## Try PanelVerse on Android
 
 1. Tap **Create account**, confirm your email using the link in your inbox, then return to PanelVerse and tap **Login**.
 2. Search for a title like **Dragon Ball**, open its series page, and tap **Start reading**.
@@ -55,6 +48,8 @@ You can also put a CBZ you’re allowed to use on your phone and select it under
 
 ## Build from source
 
+### Android
+
 You’ll need Android Studio or the Android command-line tools, JDK 17 or 21, Android SDK Platform 34, and Build-Tools 34.0.0. The project uses Kotlin, AndroidX, Material 3, Gradle 8.9, and Firebase.
 
 1. Clone the repo.
@@ -75,6 +70,19 @@ You’ll need Android Studio or the Android command-line tools, JDK 17 or 21, An
    On macOS or Linux, run `./gradlew :app:assembleDebug`. The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
 Release builds use your local `keystore.properties`, or an external file selected by `PANELVERSE_RELEASE_SIGNING_PROPERTIES`. Run `:app:assembleRelease` to build the release variant. Keep keystores, signing passwords, machine configuration, and Firebase client configuration out of version control.
+
+### iPhone and iPad on a Mac
+
+1. Open `ios/PanelVerse.xcodeproj` in Xcode and let it resolve ZIPFoundation.
+2. Select the **PanelVerse** scheme and an iPhone or iPad simulator, then press **Run**.
+3. For a physical device, connect it and choose your Apple development team in **Signing & Capabilities**. Select the device as the run destination and press **Run**. Change the bundle identifier if your team needs a unique one.
+
+### iPhone and iPad from Windows with Codemagic
+
+1. Connect the PanelVerse GitHub repository in Codemagic and select the branch with `codemagic.yaml`.
+2. Run **PanelVerse iOS simulator** to compile the app and launch it on a hosted iPhone simulator. The build provides a screenshot and simulator app under **Artifacts**. [Codemagic iOS build guide](https://docs.codemagic.io/yaml-quick-start/building-a-native-ios-app/)
+3. To install on an iPhone through TestFlight, use an Apple Developer Program membership and create the app in App Store Connect with bundle ID `com.hazemserry.panelverse`. In Codemagic, add an App Store Connect integration named **PanelVerse App Store Connect** and generate or import an Apple Distribution certificate and App Store provisioning profile for that bundle ID. [Codemagic signing guide](https://docs.codemagic.io/yaml-code-signing/signing-ios/)
+4. Run **PanelVerse iOS TestFlight**. When Apple finishes processing the upload, add testers from the **TestFlight** tab in App Store Connect. Testers install using the TestFlight invitation. [Apple TestFlight](https://developer.apple.com/testflight/)
 
 ## Content and security
 
