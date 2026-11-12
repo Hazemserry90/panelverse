@@ -143,11 +143,12 @@ struct AccountScreen: View {
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                        SecureField("Password", text: $password)
-                            .textContentType(create ? .newPassword : .password)
+                        PasswordEntry(title: "Password", text: $password,
+                                      contentType: create ? .newPassword : .password)
+                            .id(create)
                         if create {
-                            SecureField("Confirm password", text: $confirmation)
-                                .textContentType(.newPassword)
+                            PasswordEntry(title: "Confirm password", text: $confirmation,
+                                          contentType: .newPassword, fieldName: "password confirmation")
                         }
                     } footer: {
                         if create { Text("Use at least 8 characters, with uppercase and lowercase letters, a number, and a symbol.") }
@@ -207,6 +208,57 @@ struct AccountScreen: View {
             catch let error as AccountError { message = error.localizedDescription }
             catch { message = failure }
             if account.email != nil { clearPasswords() }
+        }
+    }
+}
+
+private struct PasswordEntry: View {
+    let title: String
+    @Binding var text: String
+    let contentType: UITextContentType
+    var fieldName = "password"
+
+    private enum Field: Hashable { case masked, visible }
+    @Environment(\.scenePhase) private var scenePhase
+    @FocusState private var focusedField: Field?
+    @State private var isVisible = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ZStack {
+                SecureField(title, text: $text)
+                    .textContentType(contentType)
+                    .focused($focusedField, equals: .masked)
+                    .opacity(isVisible ? 0 : 1)
+                    .allowsHitTesting(!isVisible)
+                    .accessibilityHidden(isVisible)
+
+                TextField(title, text: $text)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focusedField, equals: .visible)
+                    .opacity(isVisible ? 1 : 0)
+                    .allowsHitTesting(isVisible)
+                    .accessibilityHidden(!isVisible)
+            }
+            Button {
+                let wasFocused = focusedField != nil
+                isVisible.toggle()
+                if wasFocused { focusedField = isVisible ? .visible : .masked }
+            } label: {
+                Image(systemName: isVisible ? "eye.slash" : "eye")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(isVisible ? "Hide \(fieldName)" : "Show \(fieldName)")
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .background, isVisible {
+                if focusedField == .visible { focusedField = nil }
+                isVisible = false
+            }
         }
     }
 }
