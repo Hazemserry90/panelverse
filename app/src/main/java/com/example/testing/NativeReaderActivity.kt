@@ -1,6 +1,5 @@
 package com.example.testing
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -9,12 +8,10 @@ import android.os.Build
 import android.os.Bundle
 import android.util.LruCache
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.SeekBar
@@ -254,6 +251,8 @@ class NativeReaderActivity : AppCompatActivity() {
     private fun showOptions(anchor: View) {
         val popup = PopupMenu(this, anchor)
         val direction = popup.menu.add(R.string.pv_native_direction)
+        val zoomIn = popup.menu.add(R.string.pv_reader_zoom_in)
+        val zoomOut = popup.menu.add(R.string.pv_reader_zoom_out)
         val web = popup.menu.add(R.string.pv_chapter_web)
         val download = popup.menu.add(R.string.pv_chapter_download)
         val chapters = popup.menu.add(if (series.category == "Manga") R.string.pv_chapters_heading else R.string.pv_issues_heading)
@@ -261,6 +260,8 @@ class NativeReaderActivity : AppCompatActivity() {
         popup.setOnMenuItemClickListener { item ->
             when (item) {
                 direction -> chooseDirection()
+                zoomIn -> (recycler.findViewHolderForAdapterPosition(currentPage) as? PageHolder)?.zoomBy(1.5f)
+                zoomOut -> (recycler.findViewHolderForAdapterPosition(currentPage) as? PageHolder)?.zoomBy(1f / 1.5f)
                 web -> ReaderActivity.open(this, series, chapter)
                 chapters -> {
                     if (!intent.getBooleanExtra("from_series", false)) SeriesActivity.open(this, series)
@@ -314,23 +315,16 @@ class NativeReaderActivity : AppCompatActivity() {
         override fun onViewRecycled(holder: PageHolder) { holder.clear() }
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     private inner class PageHolder(val frame: FrameLayout) : RecyclerView.ViewHolder(frame) {
-        private val image = ImageView(frame.context).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
+        private val image = PageZoomView(frame.context).apply { isClickable = true }
         private val retry = Button(frame.context).apply { visibility = View.GONE }
         private var job: Job? = null
-        private var tapX: Float? = null
 
         init {
             frame.layoutParams = RecyclerView.LayoutParams(-1, -1)
             frame.addView(image, FrameLayout.LayoutParams(-1, -1))
             frame.addView(retry, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
-            image.setOnTouchListener { _, event ->
-                if (event.actionMasked == MotionEvent.ACTION_UP) tapX = event.x
-                false
-            }
-            image.setOnClickListener {
-                val x = tapX.also { tapX = null }
+            image.onPageTap = { x ->
                 when {
                     x == null || mode == Mode.VERTICAL || x in image.width * 0.25f..image.width * 0.75f -> setBars(!barsVisible)
                     (x < image.width * 0.25f) == (mode == Mode.RTL) -> goTo(currentPage + 1)
@@ -342,9 +336,11 @@ class NativeReaderActivity : AppCompatActivity() {
         fun clear() {
             job?.cancel()
             image.setImageDrawable(null)
+            image.resetZoom()
             retry.visibility = View.GONE
-            tapX = null
         }
+
+        fun zoomBy(factor: Float) = image.zoomBy(factor)
 
         fun load(index: Int) {
             clear()
@@ -358,6 +354,7 @@ class NativeReaderActivity : AppCompatActivity() {
                 } else {
                     pageCache.put(index, bitmap)
                     image.setImageBitmap(bitmap)
+                    image.resetZoom()
                     readyPages.add(index)
                     if (currentPage == index) rememberPosition()
                 }

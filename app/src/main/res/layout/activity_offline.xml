@@ -73,13 +73,12 @@
         android:orientation="vertical"
         android:visibility="gone">
 
-        <ImageView
+        <com.example.testing.PageZoomView
             android:id="@+id/offlinePageImage"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:importantForAccessibility="no"
-            android:scaleType="fitCenter" />
+            android:importantForAccessibility="no" />
 
         <TextView
             android:id="@+id/offlinePageNumber"

@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.addCallback
@@ -33,7 +32,7 @@ class OfflineActivity : AppCompatActivity() {
 
     private lateinit var shelf: View
     private lateinit var reader: View
-    private lateinit var image: ImageView
+    private lateinit var image: PageZoomView
     private lateinit var list: LinearLayout
     private lateinit var status: TextView
     private lateinit var counter: TextView
@@ -171,6 +170,7 @@ class OfflineActivity : AppCompatActivity() {
             return
         }
         image.setImageBitmap(bitmap)
+        image.resetZoom()
         counter.text = getString(R.string.pv_offline_page_number, index + 1, count)
         library.remember(book, index)
     }

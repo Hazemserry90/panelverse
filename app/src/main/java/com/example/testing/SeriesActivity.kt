@@ -17,6 +17,7 @@ import androidx.work.WorkManager
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import java.io.IOException
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -58,6 +59,7 @@ class SeriesActivity : AppCompatActivity() {
     private var downloads = emptyList<WorkInfo>()
     private val downloadRows = mutableMapOf<String, MaterialButton>()
     private val startedDownloads = mutableSetOf<String>()
+    private val cancellingDownloads = mutableSetOf<UUID>()
     private val comics get() = series.category != "Manga"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -256,7 +258,12 @@ class SeriesActivity : AppCompatActivity() {
                 isAllCaps = false
                 tag = book
                 setOnClickListener {
-                    if (book.isFile) openChapter(chapter)
+                    val active = downloads.firstOrNull { name in it.tags && !it.state.isFinished }
+                    if (active != null) {
+                        cancellingDownloads.add(active.id)
+                        WorkManager.getInstance(this@SeriesActivity).cancelWorkById(active.id)
+                        renderDownload(name, this)
+                    } else if (book.isFile) openChapter(chapter)
                     else if (comics) ReaderActivity.open(this@SeriesActivity, series, chapter.url,
                         downloadTitle = chapter.title, lastIssue = isFinalChapter(chapter))
                     else {
@@ -280,15 +287,22 @@ class SeriesActivity : AppCompatActivity() {
         val book = button.tag as java.io.File
         val jobs = downloads.filter { name in it.tags }
         val active = jobs.firstOrNull { !it.state.isFinished }
-        button.isEnabled = active == null
+        val cancelling = active != null && active.id in cancellingDownloads
+        button.isEnabled = !cancelling
         button.text = when {
-            active?.state == WorkInfo.State.RUNNING -> getString(R.string.pv_download_percent,
+            cancelling -> getString(R.string.pv_download_cancelling)
+            active?.state == WorkInfo.State.RUNNING -> getString(R.string.pv_download_cancel_percent,
                 active.progress.getInt(ChapterDownloadWorker.PERCENT, 0))
-            active != null -> getString(R.string.pv_download_queued)
+            active != null -> getString(R.string.pv_download_cancel)
             book.isFile -> getString(R.string.pv_chapter_offline)
             else -> getString(R.string.pv_chapter_download)
         }
-        if (active == null && jobs.isNotEmpty() && startedDownloads.remove(name) && !book.isFile) {
+        val stopped = jobs.firstOrNull { it.state.isFinished && it.id in cancellingDownloads }
+        if (stopped != null) {
+            cancellingDownloads.remove(stopped.id)
+            startedDownloads.remove(name)
+            if (!book.isFile) Toast.makeText(this, R.string.pv_download_cancelled, Toast.LENGTH_SHORT).show()
+        } else if (active == null && jobs.isNotEmpty() && startedDownloads.remove(name) && !book.isFile) {
             Toast.makeText(this, R.string.pv_download_failed, Toast.LENGTH_SHORT).show()
         }
     }

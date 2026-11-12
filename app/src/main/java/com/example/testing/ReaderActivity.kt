@@ -78,7 +78,7 @@ class ReaderActivity : AppCompatActivity() {
     private var seriesId: String? = null
     private var markedReading = false
     private var automaticDownloadStarted = false
-    private var collectingDownloadUrl: String? = null
+    private var preparingDownload: AlertDialog? = null
     private var restoreProgress: ReadingHistoryManager.Progress? = null
     private var restoreAttempts = 0
     private var offsetAttempts = 0
@@ -155,6 +155,7 @@ class ReaderActivity : AppCompatActivity() {
         webView.settings.domStorageEnabled  = true
         webView.settings.loadWithOverviewMode = true
         webView.settings.useWideViewPort    = true
+        webView.settings.setSupportZoom(true)
         webView.settings.builtInZoomControls = true
         webView.settings.displayZoomControls = false
         // SECURITY: never expose the local file system / content providers to web content.
@@ -202,6 +203,7 @@ class ReaderActivity : AppCompatActivity() {
             }
 
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+                preparingDownload?.dismiss()
                 if (providerFor(url) != provider) {
                     view.stopLoading()
                     showError()
@@ -299,6 +301,8 @@ class ReaderActivity : AppCompatActivity() {
         readerOptionsButton.setOnClickListener { anchor ->
             val popup = PopupMenu(this, anchor)
             val browser = popup.menu.add(R.string.pv_open_in_browser)
+            val zoomIn = popup.menu.add(R.string.pv_reader_zoom_in)
+            val zoomOut = popup.menu.add(R.string.pv_reader_zoom_out)
             val download = if (entry != null && initialProvider == "readcomicsonline.ru")
                 popup.menu.add(R.string.pv_download_issue) else null
             val blocker = popup.menu.add(R.string.pv_ink_block_ads).apply {
@@ -308,6 +312,8 @@ class ReaderActivity : AppCompatActivity() {
             popup.setOnMenuItemClickListener { item ->
                 when (item) {
                     browser -> openCurrentPageInBrowser()
+                    zoomIn -> webView.zoomIn()
+                    zoomOut -> webView.zoomOut()
                     download -> if (entry != null) collectComicDownload(entry)
                     blocker -> {
                         blockAds = !blockAds
@@ -361,45 +367,46 @@ class ReaderActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.pv_open_issue_to_download, Toast.LENGTH_SHORT).show()
             return
         }
-        if (collectingDownloadUrl == url) return
-        collectingDownloadUrl = url
+        if (preparingDownload != null) return
         val title = label ?: getString(R.string.pv_issue_number, canonical.pathSegments.last().removePrefix("issue-"))
         val chapter = ProviderChapters.Chapter(title, canonical.toString())
         val book = OfflineLibrary(this).chapterBook(series, chapter.url)
         if (book.isFile) {
-            collectingDownloadUrl = null
             Toast.makeText(this, R.string.pv_download_complete, Toast.LENGTH_SHORT).show()
             return
         }
-        collectComicPages(series, chapter, url, book, lastIssue, attempts = 12)
+        val dialog = AlertDialog.Builder(this)
+            .setMessage(R.string.pv_download_preparing)
+            .setNegativeButton(R.string.pv_download_cancel) { _, _ ->
+                Toast.makeText(this, R.string.pv_download_cancelled, Toast.LENGTH_SHORT).show()
+            }
+            .show()
+        preparingDownload = dialog
+        dialog.setOnDismissListener { if (preparingDownload === dialog) preparingDownload = null }
+        collectComicPages(series, chapter, url, book, lastIssue, dialog, attempts = 12)
     }
 
     private fun collectComicPages(
         series: MangaItem, chapter: ProviderChapters.Chapter, url: String,
-        book: java.io.File, lastIssue: Boolean, attempts: Int
+        book: java.io.File, lastIssue: Boolean, dialog: AlertDialog, attempts: Int
     ) {
-        if (isFinishing || isDestroyed || loadedUrl != url || collectingDownloadUrl != url) {
-            if (collectingDownloadUrl == url) collectingDownloadUrl = null
-            return
-        }
+        if (isFinishing || isDestroyed || loadedUrl != url || preparingDownload !== dialog || !dialog.isShowing) return
         runPageScript("comic-pages", url) { result ->
             lifecycleScope.launch {
+                if (preparingDownload !== dialog || !dialog.isShowing) return@launch
                 val stored = withContext(Dispatchers.IO) { ComicWebData.rememberPages(applicationContext, book, result) }
-                if (isFinishing || loadedUrl != url || collectingDownloadUrl != url) {
-                    if (collectingDownloadUrl == url) collectingDownloadUrl = null
-                    return@launch
-                }
+                if (isFinishing || loadedUrl != url || preparingDownload !== dialog || !dialog.isShowing) return@launch
                 when {
                     stored -> {
-                        collectingDownloadUrl = null
+                        dialog.dismiss()
                         val work = ChapterDownloadWorker.enqueue(this@ReaderActivity, series, chapter, lastIssue)
                         showChapterDownloadProgress(this@ReaderActivity, work, book)
                     }
                     attempts > 1 -> webView.postDelayed({
-                        collectComicPages(series, chapter, url, book, lastIssue, attempts - 1)
+                        collectComicPages(series, chapter, url, book, lastIssue, dialog, attempts - 1)
                     }, 500)
                     else -> {
-                        collectingDownloadUrl = null
+                        dialog.dismiss()
                         Toast.makeText(this@ReaderActivity, R.string.pv_issue_pages_not_ready, Toast.LENGTH_LONG).show()
                     }
                 }
@@ -553,6 +560,7 @@ class ReaderActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        preparingDownload?.dismiss()
         if (::webView.isInitialized) {
             webView.removeCallbacks(restoreScroll)
             webView.removeCallbacks(saveScroll)

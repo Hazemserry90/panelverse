@@ -202,6 +202,13 @@
     <string name="pv_native_issue_unavailable">The issue couldn’t load in the native reader.</string>
     <string name="pv_download_percent">Downloading %1$d%%</string>
     <string name="pv_download_complete">Download complete. Open it from Offline.</string>
+    <string name="pv_download_cancel">Cancel download</string>
+    <string name="pv_download_cancel_percent">%1$d%% · Cancel</string>
+    <string name="pv_download_cancelling">Cancelling download…</string>
+    <string name="pv_download_cancelled">Download cancelled.</string>
+    <string name="pv_download_preparing">Preparing issue download…</string>
+    <string name="pv_reader_zoom_in">Zoom in</string>
+    <string name="pv_reader_zoom_out">Zoom out</string>
     <string name="pv_library_favorites">Favorites</string>
     <string name="pv_library_favorite">Favorite</string>
     <string name="pv_library_favorited">Favorited</string>
