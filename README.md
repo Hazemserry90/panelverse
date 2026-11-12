@@ -2,6 +2,21 @@
 
 PanelVerse is an Android app for browsing manga and comics, keeping a reading list, and picking up where you left off. The **Ink & Screentone** interface brings together a searchable cover grid, series details, an in-app web reader, and an offline library for your own files.
 
+## Download and install
+
+Open this link on a phone or tablet running **Android 7 or newer**. [Download PanelVerse for Android](https://github.com/Hazemserry90/panelverse/releases/latest)
+
+1. On the release page, tap **Assets** and choose the PanelVerse file ending in **.apk**. That’s the Android installer.
+2. When the download finishes, tap the file in your notifications or find it under **Files → Downloads**.
+3. If Android asks for permission to install from your browser or Files app, tap **Settings** and turn on **Allow from this source** for that app. Go back and tap **Install**, then **Open**. You can turn the permission off after installing. [Android installation help](https://support.google.com/pixelphone/answer/7391672)
+
+## Try PanelVerse
+
+1. Tap **Create account**, confirm your email using the link in your inbox, then return to PanelVerse and tap **Login**.
+2. Search for a title like **Dragon Ball**, open its series page, and tap **Start reading**.
+3. Tap the star on a title to find it later in **Library → Favorites**, or tap **Want to Read** on the series page to add it to that list.
+4. To try reading without internet, tap **Download** next to a supported chapter or issue. Wait for the download to finish, then open it from **Offline**.
+
 ## Features
 
 - **Home and Discover** — Browse Manga, Marvel, DC, Invincible, and Comics. Search by title or find recommendations based on your interests and reading history.
@@ -10,10 +25,6 @@ PanelVerse is an Android app for browsing manga and comics, keeping a reading li
 - **Ad filtering** — Use **Reader options → Block ads** to block known ad hosts and hide supported overlays. Provider ads can change, so some may still appear.
 - **Offline library** — Download supported chapters or import a local CBZ with JPG, PNG, or WebP pages. PanelVerse keeps the files on the device and remembers your page.
 - **Appearance and reminders** — Switch between paper and ink themes and control local reading reminders in Settings.
-
-## Install on Android
-
-If a signed APK has been published, download it from [GitHub Releases](https://github.com/Hazemserry90/panelverse/releases). Open the APK on your phone and follow Android’s install prompt. To install over an existing PanelVerse build, the APK must use the same signing certificate. Android 7.0 (API 24) or later is required.
 
 ## Read offline
 
