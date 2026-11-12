@@ -80,6 +80,17 @@ Release builds use your local `keystore.properties`, or an external file selecte
 
 ### iPhone and iPad from Windows with Codemagic
 
+#### Free testing on your own iPhone or iPad
+
+1. Add the PanelVerse repository to a personal Codemagic account. Its free plan includes 500 macOS M2 build minutes per month. [Codemagic pricing](https://docs.codemagic.io/billing/pricing/)
+2. Start a build on the branch containing this workflow and choose **PanelVerse iOS personal device**. When it succeeds, download **PanelVerse-unsigned.ipa** under **Artifacts**.
+3. Install Sideloadly on your Windows PC, connect and unlock your device, and tap **Trust** if prompted. Select the IPA and your device in Sideloadly, then click **Start** and follow the prompts to sign it with your free Apple Account. [Sideloadly download and setup](https://sideloadly.io/)
+4. If prompted on iOS 16, enable **Settings → Privacy & Security → Developer Mode**, restart, and confirm. If iOS asks you to trust the developer, go to **Settings → General → VPN & Device Management** and trust your Apple Account under **Developer App**. Open PanelVerse. [Apple Developer Mode guide](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device)
+
+Free personal signing expires after seven days. Use the same Apple Account to refresh the install from Windows. [Apple developer account limits](https://developer.apple.com/help/account/basics/about-your-developer-account)
+
+#### Simulator and TestFlight workflows
+
 1. Connect the PanelVerse GitHub repository in Codemagic and select the branch with `codemagic.yaml`.
 2. Run **PanelVerse iOS simulator** to compile the app and launch it on a hosted iPhone simulator. The build provides a screenshot and simulator app under **Artifacts**. [Codemagic iOS build guide](https://docs.codemagic.io/yaml-quick-start/building-a-native-ios-app/)
 3. To install on an iPhone through TestFlight, use an Apple Developer Program membership and create the app in App Store Connect with bundle ID `com.hazemserry.panelverse`. In Codemagic, add an App Store Connect integration named **PanelVerse App Store Connect** and generate or import an Apple Distribution certificate and App Store provisioning profile for that bundle ID. [Codemagic signing guide](https://docs.codemagic.io/yaml-code-signing/signing-ios/)

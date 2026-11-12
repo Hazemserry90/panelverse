@@ -38,6 +38,29 @@ workflows:
       - build/panelverse-simulator/Build/Products/Debug-iphonesimulator/PanelVerse.app
       - build/panelverse-simulator.png
 
+  ios-personal-device:
+    name: PanelVerse iOS personal device
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      xcode: latest
+    scripts:
+      - name: Build and package an unsigned iPhone app
+        script: |
+          set -euo pipefail
+          derived_data=build/panelverse-device
+          xcodebuild -project ios/PanelVerse.xcodeproj -scheme PanelVerse \
+            -configuration Debug -destination 'generic/platform=iOS' \
+            -derivedDataPath "$derived_data" CODE_SIGNING_ALLOWED=NO build
+
+          app="$derived_data/Build/Products/Debug-iphoneos/PanelVerse.app"
+          package_dir="$(mktemp -d)"
+          mkdir -p "$package_dir/Payload" build/ios/ipa
+          ditto "$app" "$package_dir/Payload/PanelVerse.app"
+          ditto -c -k --keepParent "$package_dir/Payload" build/ios/ipa/PanelVerse-unsigned.ipa
+    artifacts:
+      - build/ios/ipa/PanelVerse-unsigned.ipa
+
   ios-testflight:
     name: PanelVerse iOS TestFlight
     instance_type: mac_mini_m2
