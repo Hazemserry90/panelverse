@@ -211,8 +211,11 @@ struct LibraryScreen: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     shelfButtons
                 }
+                .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
+            .padding(.top, 4)
             if titles.isEmpty {
                 Spacer()
                 Text("Nothing in this list yet.").foregroundStyle(.secondary)
@@ -239,6 +242,7 @@ struct LibraryScreen: View {
                 .scrollContentBackground(.hidden)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Ink.background)
         .navigationTitle("Library")
     }
@@ -251,15 +255,16 @@ struct LibraryScreen: View {
                 } label: {
                     Text(name)
                         .font(.subheadline.weight(.semibold))
-                        .fixedSize(horizontal: true, vertical: false)
                         .padding(.horizontal, 8)
                         .frame(minHeight: 44)
+                        .fixedSize()
                         .foregroundStyle(shelf == name ? Ink.background : Ink.paper)
-                        .background(shelf == name ? Ink.paper : Ink.panel)
+                        .background(shelf == name ? Ink.paper : Ink.panel, ignoresSafeAreaEdges: [])
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(shelf == name ? .isSelected : [])
             }
         }
+        .fixedSize()
     }
 }
