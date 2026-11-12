@@ -67,6 +67,20 @@ enum ComicArchive {
         return try thumbnail(readImage(pages[page], from: archive))
     }
 
+    static func restoreDownloads(excluding knownIDs: Set<UUID>) -> [OfflineBook] {
+        guard let folder = try? storage(),
+              let files = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) else { return [] }
+        return files.compactMap { directory -> OfflineBook? in
+            guard directory.pathExtension == "book",
+                  let id = UUID(uuidString: directory.deletingPathExtension().lastPathComponent),
+                  !knownIDs.contains(id),
+                  let data = try? Data(contentsOf: directory.appendingPathComponent("info.json")),
+                  let book = try? JSONDecoder().decode(OfflineBook.self, from: data),
+                  book.id == id, FileManager.default.fileExists(atPath: archiveURL(in: directory).path) else { return nil }
+            return book
+        }.sorted { a, b in a.title.localizedStandardCompare(b.title) == .orderedAscending }
+    }
+
     static func onlineImage(_ url: URL, chapter: DownloadChapter) async throws -> UIImage {
         let data = try await remotePage(url, chapter: chapter, limit: pageLimit, session: readerSession)
         return try thumbnail(remoteImage(data).source)
@@ -93,30 +107,48 @@ enum ComicArchive {
         try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: false)
         defer { try? FileManager.default.removeItem(at: staging) }
         let file = staging.appendingPathComponent("book.cbz")
-        let pageFile = staging.appendingPathComponent("page")
         let archive = try Archive(url: file, accessMode: .create)
         let session = pageSession()
         defer { session.invalidateAndCancel() }
         var downloaded = 0
-        for (index, url) in pages.enumerated() {
+        for start in stride(from: 0, to: pages.count, by: 3) {
             try Task.checkCancellation()
             let limit = min(pageLimit, archiveLimit - downloaded)
             guard limit > 0 else { throw ImportError.tooLarge }
-            let data = try await remotePage(url, chapter: chapter, limit: limit, session: session)
-            let ext = try remoteImage(data).fileExtension
-            try data.write(to: pageFile)
-            let name = String(format: "%04d", index + 1) + "." + ext
-            try archive.addEntry(with: name, fileURL: pageFile)
-            let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
-            guard let size = attributes[.size] as? NSNumber,
-                  size.int64Value <= Int64(archiveLimit) else { throw ImportError.tooLarge }
-            downloaded += data.count
-            await progress((index + 1) * 99 / pages.count)
+            try await withThrowingTaskGroup(of: (Int, Data).self) { group in
+                for index in start..<min(start + 3, pages.count) {
+                    let url = pages[index]
+                    group.addTask {
+                        (index, try await remotePage(url, chapter: chapter, limit: limit, session: session))
+                    }
+                }
+                var completed = start
+                for try await (index, data) in group {
+                    try Task.checkCancellation()
+                    guard data.count <= archiveLimit - downloaded else { throw ImportError.tooLarge }
+                    let ext = try remoteImage(data).fileExtension
+                    let name = String(format: "%04d", index + 1) + "." + ext
+                    let pageFile = staging.appendingPathComponent(name)
+                    try data.write(to: pageFile)
+                    try archive.addEntry(with: name, fileURL: pageFile)
+                    try FileManager.default.removeItem(at: pageFile)
+                    let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
+                    guard let size = attributes[.size] as? NSNumber,
+                          size.int64Value <= Int64(archiveLimit) else { throw ImportError.tooLarge }
+                    downloaded += data.count
+                    completed += 1
+                    await progress(completed * 99 / pages.count)
+                }
+            }
         }
         try Task.checkCancellation()
+        let verified = try Archive(url: file, accessMode: .read)
+        guard try entries(in: verified).count == pages.count else { throw ImportError.invalid }
         let book = OfflineBook(id: id, title: chapter.title, pageCount: pages.count,
                                source: chapter.address, seriesID: chapter.seriesID)
-        try FileManager.default.moveItem(at: file, to: bookURL(book))
+        try JSONEncoder().encode(book).write(to: staging.appendingPathComponent("info.json"), options: .atomic)
+        try Task.checkCancellation()
+        try FileManager.default.moveItem(at: staging, to: downloadDirectory(id, in: folder))
         return book
     }
 
@@ -126,7 +158,7 @@ enum ComicArchive {
         config.urlCredentialStorage = nil
         config.timeoutIntervalForRequest = 20
         config.timeoutIntervalForResource = 60
-        return URLSession(configuration: config, delegate: NoDownloadRedirects(), delegateQueue: nil)
+        return URLSession(configuration: config)
     }
 
     private static func remotePage(_ url: URL, chapter: DownloadChapter, limit: Int,
@@ -135,16 +167,23 @@ enum ComicArchive {
         var request = URLRequest(url: url)
         request.setValue("image/jpeg,image/png,image/webp,application/octet-stream", forHTTPHeaderField: "Accept")
         request.setValue(chapter.address.absoluteString, forHTTPHeaderField: "Referer")
-        let (bytes, response) = try await session.bytes(for: request)
-        defer { bytes.task.cancel() }
+        let delegate = PageTransferLimit(bytes: limit)
+        let (file, response): (URL, URLResponse)
+        do {
+            (file, response) = try await session.download(for: request, delegate: delegate)
+        } catch {
+            if delegate.exceededLimit { throw ImportError.tooLarge }
+            throw error
+        }
+        defer { try? FileManager.default.removeItem(at: file) }
         guard let http = response as? HTTPURLResponse, http.statusCode == 200,
               let finalURL = http.url, chapter.allowsImage(finalURL) else { throw ChapterDownloadError.providerResponse }
-        guard response.expectedContentLength <= Int64(limit) else { throw ImportError.tooLarge }
-        var data = Data()
-        for try await byte in bytes {
-            guard data.count < limit else { throw ImportError.tooLarge }
-            data.append(byte)
-        }
+        let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+        guard size > 0 else { throw ChapterDownloadError.invalidPage }
+        guard size <= limit else { throw ImportError.tooLarge }
+        try Task.checkCancellation()
+        let data = try Data(contentsOf: file)
+        guard data.count == size else { throw ChapterDownloadError.invalidPage }
         return data
     }
 
@@ -158,6 +197,11 @@ enum ComicArchive {
     }
 
     static func remove(_ book: OfflineBook) throws {
+        let directory = try downloadDirectory(book.id, in: storage())
+        if FileManager.default.fileExists(atPath: directory.path) {
+            try FileManager.default.removeItem(at: directory)
+            return
+        }
         let url = try bookURL(book)
         if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
     }
@@ -174,7 +218,18 @@ enum ComicArchive {
     }
 
     private static func bookURL(_ book: OfflineBook) throws -> URL {
-        try storage().appendingPathComponent(book.id.uuidString + ".cbz")
+        let folder = try storage()
+        let archived = archiveURL(in: downloadDirectory(book.id, in: folder))
+        if FileManager.default.fileExists(atPath: archived.path) { return archived }
+        return folder.appendingPathComponent(book.id.uuidString + ".cbz")
+    }
+
+    private static func downloadDirectory(_ id: UUID, in folder: URL) -> URL {
+        folder.appendingPathComponent(id.uuidString + ".book", isDirectory: true)
+    }
+
+    private static func archiveURL(in directory: URL) -> URL {
+        directory.appendingPathComponent("book.cbz")
     }
 
     private static func entries(in archive: Archive) throws -> [Entry] {
@@ -231,9 +286,34 @@ enum ComicArchive {
     }
 }
 
-private final class NoDownloadRedirects: NSObject, URLSessionTaskDelegate {
+private final class PageTransferLimit: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    let limit: Int64
+    private let lock = NSLock()
+    private var exceeded = false
+
+    var exceededLimit: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return exceeded
+    }
+
+    init(bytes: Int) { limit = Int64(bytes) }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didFinishDownloadingTo location: URL) {}
+
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         completionHandler(nil)
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
+                    totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        if totalBytesWritten > limit || totalBytesExpectedToWrite > limit {
+            lock.lock()
+            exceeded = true
+            lock.unlock()
+            downloadTask.cancel()
+        }
     }
 }

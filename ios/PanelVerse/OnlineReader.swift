@@ -13,6 +13,7 @@ struct OnlineReaderScreen: View {
     @State private var start: ReadingPosition?
     @State private var ready = false
     @State private var error = false
+    @State private var errorMessage = "This page couldn’t load."
     @State private var loading = true
     @State private var reload = 0
     @State private var zoom: CGFloat = 1
@@ -22,7 +23,7 @@ struct OnlineReaderScreen: View {
     private var entryAddress: URL { initialAddress ?? series.address }
     private var savedPosition: ReadingPosition? {
         guard let position = library.position(series) else { return nil }
-        if let initialAddress, initialAddress.pathComponents != position.address.pathComponents { return nil }
+        if let initialAddress, Series.readerPath(initialAddress) != Series.readerPath(position.address) { return nil }
         return position
     }
 
@@ -32,7 +33,8 @@ struct OnlineReaderScreen: View {
                 Ink.background.ignoresSafeArea()
                 if ready {
                     ProviderWebView(series: series, entryAddress: entryAddress, initial: start, zoom: zoom, loading: $loading, failed: $error,
-                                    onDownloadSource: { downloadSource = $0 }) {
+                                    onDownloadSource: { downloadSource = $0 },
+                                    onError: { errorMessage = $0 }) {
                         library.remember(series, address: $0, scroll: $1)
                     }
                     .id(reload)
@@ -40,7 +42,7 @@ struct OnlineReaderScreen: View {
                 }
                 if error {
                     VStack(spacing: 16) {
-                        Text("This page couldn’t load.").font(.headline)
+                        Text(errorMessage).font(.headline).multilineTextAlignment(.center)
                         Button("Retry") {
                             error = false
                             loading = true
@@ -124,6 +126,7 @@ private struct ProviderWebView: UIViewRepresentable {
     @Binding var loading: Bool
     @Binding var failed: Bool
     var onDownloadSource: (ReaderDownloadSource?) -> Void
+    var onError: (String) -> Void
     var save: (URL, Double) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -190,8 +193,9 @@ private struct ProviderWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
                      decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
             if navigationResponse.isForMainFrame,
-               let response = navigationResponse.response as? HTTPURLResponse, response.statusCode >= 400 {
-                fail()
+               let response = navigationResponse.response as? HTTPURLResponse, response.statusCode >= 400,
+               !ReaderAdFilter.isVerificationResponse(response, provider: parent.series.provider) {
+                fail("The reading source returned HTTP \(response.statusCode).")
                 decisionHandler(.cancel)
                 return
             }
@@ -280,10 +284,11 @@ private struct ProviderWebView: UIViewRepresentable {
             parent.save(page, Double(view.scrollView.contentOffset.y))
         }
 
-        private func fail() {
+        private func fail(_ message: String = "This page couldn’t load.") {
             loadingPage = false
             parent.onDownloadSource(nil)
             parent.loading = false
+            parent.onError(message)
             parent.failed = true
         }
     }
@@ -361,6 +366,11 @@ enum ReaderAdFilter {
               parts.port == nil || parts.port == 443, let host = parts.host?.lowercased(),
               let prefix = verification[host] else { return false }
         return parts.path.hasPrefix(prefix)
+    }
+
+    static func isVerificationResponse(_ response: HTTPURLResponse, provider: String) -> Bool {
+        provider == "readcomicsonline.ru" &&
+            response.value(forHTTPHeaderField: "cf-mitigated")?.lowercased() == "challenge"
     }
 
     @MainActor static func installScript(in controller: WKUserContentController) {

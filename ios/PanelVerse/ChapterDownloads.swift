@@ -13,13 +13,14 @@ struct DownloadChapter: Identifiable, Sendable {
 
     init?(series: Series, url: URL, label: String? = nil) {
         guard series.isChapter(url), var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
-        let segment = url.lastPathComponent
+        guard let segment = Series.readerPath(url).last else { return nil }
         let pattern = series.isManga ? #"^c[0-9]+(?:\.[0-9]+)?(?:[-_][a-z0-9._-]+)?$"# :
             #"^(?:(?:issue[-_])?[0-9]+(?:\.[0-9]+)?(?:[-_][a-z0-9._-]+)?|(?:annual|special|giant|preview|fcbd|one[-_]shot)(?:[-_][a-z0-9._-]+|[0-9]+)?)$"#
         guard segment.utf8.count <= 80,
               segment.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil else { return nil }
         parts.host = series.provider
         parts.port = nil
+        parts.path = "/" + Series.readerPath(url).joined(separator: "/")
         parts.query = nil
         parts.fragment = nil
         guard let address = parts.url else { return nil }
@@ -48,7 +49,7 @@ struct DownloadChapter: Identifiable, Sendable {
 }
 
 enum ChapterDownloadError: LocalizedError {
-    case listUnavailable, pagesUnavailable, providerResponse, invalidPage
+    case listUnavailable, pagesUnavailable, providerResponse, invalidPage, providerHTTP(Int), interrupted
 
     var errorDescription: String? {
         switch self {
@@ -56,6 +57,8 @@ enum ChapterDownloadError: LocalizedError {
         case .pagesUnavailable: return "The provider’s page images aren’t available for download. Reload this chapter or issue and try again."
         case .providerResponse: return "The provider couldn’t send a page image. Check your connection and try again."
         case .invalidPage: return "A page isn’t a readable JPG, PNG, or WebP image."
+        case .providerHTTP(let status): return "The reading source returned HTTP \(status). Try the web reader."
+        case .interrupted: return "The download was interrupted. Start it again from the series."
         }
     }
 }
@@ -76,12 +79,25 @@ final class ReaderDownloadSource {
         guard let view, view.url == visibleURL else { throw ChapterDownloadError.pagesUnavailable }
         let script = #"""
         if (location.href !== expected || document.readyState === 'loading') return null;
-        const images = document.querySelectorAll(isManga ? '#imgs div[id^="page"] img' : '#reader-all img, #all img');
+        let images = document.querySelectorAll(isManga ? '#imgs div[id^="page"] img' : '#reader-all img, #all img');
         const attrs = isManga ? ['data-src'] :
             ['data-background-image', 'data-cfsrc', 'data-lazy-src', 'data-src', 'data-original', 'src'];
-        if (images.length > 1000) return null;
-        let sources = Array.from(images, image =>
-            attrs.map(attr => image.getAttribute(attr)).find(value => value && value.trim()));
+        let sources;
+        if (!isManga && !images.length) {
+            const slug = location.pathname.split('/').filter(Boolean)[1];
+            const prefix = '/uploads/manga/' + slug + '/chapters/';
+            sources = Array.from(document.images, image =>
+                attrs.map(attr => image.getAttribute(attr)).find(raw => {
+                    try {
+                        const url = new URL(raw || '', location.href);
+                        return url.origin === location.origin && url.pathname.startsWith(prefix);
+                    } catch (_) { return false; }
+                })).filter(Boolean);
+        } else {
+            if (images.length > 1000) return null;
+            sources = Array.from(images, image =>
+                attrs.map(attr => image.getAttribute(attr)).find(value => value && value.trim()));
+        }
         if (isManga && (!sources.length || sources.some(source => !source))) {
             for (const script of document.scripts) {
                 const text = script.textContent;
@@ -128,7 +144,8 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
     private let address: URL
     private var committed = false
     private var loaded = false
-    private var failed = false
+    private var navigationError: Error?
+    private static var pageLists: [URL: (pages: [URL], loadedAt: Date)] = [:]
 
     private init(series: Series, address: URL) {
         self.series = series
@@ -140,7 +157,7 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
         return try await loader.extract(failure: .listUnavailable) { view, url in
             let script = #"""
             if (location.href !== expected || document.readyState === 'loading') return null;
-            const root = location.pathname.replace(/\/$/, '') + '/';
+            const root = location.pathname.replace(/\/+$/, '') + '/';
             const chapterLinks = isManga ? document.querySelectorAll('.chapter a[href]') : [];
             const links = chapterLinks.length ? chapterLinks : document.querySelectorAll('a[href]');
             const entries = [];
@@ -170,10 +187,18 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
     }
 
     static func pages(for series: Series, chapter: DownloadChapter) async throws -> [URL] {
+        if let cached = pageLists[chapter.address], Date().timeIntervalSince(cached.loadedAt) < 120 {
+            return cached.pages
+        }
         let loader = ProviderReaderLoader(series: series, address: chapter.address)
-        return try await loader.extract(failure: .pagesUnavailable) { view, url in
+        let pages: [URL] = try await loader.extract(failure: .pagesUnavailable) { view, url in
             try? await ReaderDownloadSource(chapter: chapter, visibleURL: url, view: view).pages()
         }
+        if pageLists.count >= 12, let oldest = pageLists.min(by: { $0.value.loadedAt < $1.value.loadedAt }) {
+            pageLists.removeValue(forKey: oldest.key)
+        }
+        pageLists[chapter.address] = (pages, Date())
+        return pages
     }
 
     private func extract<Result>(failure: ChapterDownloadError,
@@ -196,7 +221,7 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
         var attemptsAfterLoad = 0
         for _ in 0..<60 {
             try Task.checkCancellation()
-            if failed { break }
+            if let navigationError { throw navigationError }
             if committed, let url = view.url, accepts(url) {
                 if let result = try? await read(view, url), view.url == url { return result }
                 if loaded { attemptsAfterLoad += 1 }
@@ -208,7 +233,7 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
     }
 
     private func accepts(_ url: URL) -> Bool {
-        series.contains(url) && url.pathComponents == address.pathComponents
+        series.contains(url) && Series.readerPath(url) == Series.readerPath(address)
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
@@ -224,9 +249,14 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
     func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse,
                  decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
         if response.isForMainFrame {
-            guard let http = response.response as? HTTPURLResponse, let url = http.url,
-                  (200..<300).contains(http.statusCode), accepts(url) else {
-                failed = true
+            guard let http = response.response as? HTTPURLResponse, let url = http.url, accepts(url) else {
+                navigationError = ChapterDownloadError.providerResponse
+                decisionHandler(.cancel)
+                return
+            }
+            // The visible web reader can present the provider’s verification screen.
+            guard (200..<300).contains(http.statusCode) else {
+                navigationError = ChapterDownloadError.providerHTTP(http.statusCode)
                 decisionHandler(.cancel)
                 return
             }
@@ -236,8 +266,12 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { committed = true }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { loaded = true }
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { failed = true }
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { failed = true }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        if navigationError == nil { navigationError = error }
+    }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        if navigationError == nil { navigationError = error }
+    }
 }
 
 @MainActor
@@ -246,7 +280,16 @@ final class ChapterDownloads: ObservableObject {
     @Published private(set) var percent = 0
     @Published private(set) var cancelling = false
     @Published private(set) var failure: String?
+    @Published private(set) var completed: OfflineBook?
     private var task: Task<Void, Never>?
+    private static let interruptedKey = "panelverse.download.inProgress"
+
+    init() {
+        if UserDefaults.standard.bool(forKey: Self.interruptedKey) {
+            failure = ChapterDownloadError.interrupted.localizedDescription
+            UserDefaults.standard.removeObject(forKey: Self.interruptedKey)
+        }
+    }
 
     func start(_ source: ReaderDownloadSource, library: LibraryStore, account: AccountStore) {
         start(source.chapter, library: library, account: account, pages: source.pages)
@@ -260,10 +303,13 @@ final class ChapterDownloads: ObservableObject {
         }
         guard active == nil, !library.books.contains(where: { $0.source == chapter.address }) else { return }
         failure = nil
+        completed = nil
         percent = 0
         active = chapter
+        UserDefaults.standard.set(true, forKey: Self.interruptedKey)
         task = Task {
             defer {
+                UserDefaults.standard.removeObject(forKey: Self.interruptedKey)
                 active = nil
                 cancelling = false
                 task = nil
@@ -275,8 +321,13 @@ final class ChapterDownloads: ObservableObject {
                 let book = try await ComicArchive.download(chapter, pages: pageURLs) { [weak self] percent in
                     self?.percent = percent
                 }
-                if Task.isCancelled || account.currentUserID != userID { try ComicArchive.remove(book) }
-                else { library.add(book) }
+                if Task.isCancelled || account.currentUserID != userID {
+                    try ComicArchive.remove(book)
+                } else {
+                    library.add(book)
+                    percent = 100
+                    completed = book
+                }
             } catch let error as ChapterDownloadError {
                 if !Task.isCancelled { failure = error.localizedDescription }
             } catch let error as ComicArchive.ImportError {
@@ -294,6 +345,7 @@ final class ChapterDownloads: ObservableObject {
     }
 
     func dismissFailure() { failure = nil }
+    func dismissCompletion() { completed = nil }
 }
 
 @MainActor
@@ -319,6 +371,15 @@ struct DownloadStatus: View {
                 Text(message).font(.caption)
                 Spacer()
                 Button("Dismiss") { downloads.dismissFailure() }
+            }
+            .padding(12)
+            .background(Ink.panel)
+        } else if let book = downloads.completed {
+            HStack {
+                Label("Saved to Offline: \(book.title)", systemImage: "checkmark.circle")
+                    .font(.caption)
+                Spacer()
+                Button("Dismiss") { downloads.dismissCompletion() }
             }
             .padding(12)
             .background(Ink.panel)

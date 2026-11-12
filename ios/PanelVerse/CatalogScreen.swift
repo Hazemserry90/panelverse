@@ -136,6 +136,7 @@ struct SeriesScreen: View {
     @State private var chapters: [DownloadChapter] = []
     @State private var loadingChapters = true
     @State private var chapterListFailed = false
+    @State private var chapterListError = ""
     @State private var retryList = 0
 
     private enum ReaderDestination: Identifiable {
@@ -227,7 +228,7 @@ struct SeriesScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: retryList) { await loadChapters() }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if downloads.failure != nil { DownloadStatus() }
+            if downloads.failure != nil || downloads.completed != nil { DownloadStatus() }
         }
         .fullScreenCover(item: $reader) { destination in
             switch destination {
@@ -251,7 +252,7 @@ struct SeriesScreen: View {
             if loadingChapters {
                 ProgressView().accessibilityLabel(series.isManga ? "Loading chapters" : "Loading issues")
             } else if chapterListFailed {
-                Text(ChapterDownloadError.listUnavailable.localizedDescription)
+                Text(chapterListError)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Button("Retry") { retryList += 1 }.buttonStyle(.bordered)
@@ -313,6 +314,8 @@ struct SeriesScreen: View {
             loadingChapters = false
         } catch {
             guard !Task.isCancelled else { return }
+            chapterListError = (error as? ChapterDownloadError)?.localizedDescription ??
+                ChapterDownloadError.listUnavailable.localizedDescription
             chapterListFailed = true
             loadingChapters = false
         }

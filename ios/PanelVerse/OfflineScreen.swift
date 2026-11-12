@@ -5,50 +5,54 @@ import UniformTypeIdentifiers
 @MainActor
 struct OfflineScreen: View {
     @EnvironmentObject private var library: LibraryStore
+    @EnvironmentObject private var downloads: ChapterDownloads
     @State private var picker = false
     @State private var importing = false
     @State private var error: String?
 
     var body: some View {
-        Group {
-            if library.books.isEmpty {
+        List {
+            if downloads.active != nil || downloads.failure != nil || downloads.completed != nil {
+                DownloadStatus()
+            }
+            ForEach(library.books) { book in
+                NavigationLink {
+                    OfflineReader(book: book)
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(book.title).font(.headline)
+                        Text("Page \(library.page(book) + 1) of \(book.pageCount)")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .swipeActions {
+                    Button("Remove", role: .destructive) {
+                        do { try library.remove(book) }
+                        catch { self.error = error.localizedDescription }
+                    }
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .overlay {
+            if library.books.isEmpty && downloads.active == nil && downloads.failure == nil && downloads.completed == nil {
                 VStack(spacing: 12) {
                     Image(systemName: "books.vertical").font(.largeTitle)
-                    Text("Download a chapter or issue from the reader, or import a CBZ from Files.")
+                    Text("Download a chapter or issue from a series, or import a CBZ from Files.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                     Button("Import CBZ") { picker = true }.buttonStyle(.borderedProminent)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List(library.books) { book in
-                    NavigationLink {
-                        OfflineReader(book: book)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(book.title).font(.headline)
-                            Text("Page \(library.page(book) + 1) of \(book.pageCount)")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    .swipeActions {
-                        Button("Remove", role: .destructive) {
-                            do { try library.remove(book) }
-                            catch { self.error = error.localizedDescription }
-                        }
-                    }
-                }
-                .scrollContentBackground(.hidden)
             }
         }
         .background(Ink.background)
-        .safeAreaInset(edge: .top, spacing: 0) { DownloadStatus() }
         .navigationTitle("Offline")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if importing { ProgressView() }
-                else if !library.books.isEmpty { Button("Import CBZ") { picker = true } }
+                else { Button("Import CBZ") { picker = true } }
             }
         }
         .disabled(importing)
@@ -102,7 +106,9 @@ struct NativeReaderScreen: View {
     @State private var urls: [URL] = []
     @State private var page: Int?
     @State private var image: UIImage?
+    @State private var pageCache = ReaderPageCache()
     @State private var chapterFailed = false
+    @State private var chapterFailureMessage = ""
     @State private var pageFailed = false
     @State private var chapterRetry = 0
     @State private var pageRetry = 0
@@ -155,7 +161,7 @@ struct NativeReaderScreen: View {
                         .accessibilityLabel("Page \(page + 1) of \(pageCount)")
                 } else if chapterFailed || pageFailed {
                     VStack(spacing: 12) {
-                        Text(chapterFailed ? "The provider’s pages couldn’t load." : "Page \((page ?? 0) + 1) couldn’t load.")
+                        Text(chapterFailed ? chapterFailureMessage : "Page \((page ?? 0) + 1) couldn’t load.")
                             .multilineTextAlignment(.center)
                         Button("Retry") {
                             if chapterFailed { chapterRetry += 1 }
@@ -173,12 +179,13 @@ struct NativeReaderScreen: View {
                 }
             }
             if pageCount > 0 { pageControls }
-            DownloadStatus()
+            if downloads.active != nil || downloads.failure != nil { DownloadStatus() }
         }
         .background(Ink.background)
         .toolbar(.hidden, for: .navigationBar, .tabBar)
         .task(id: chapterRetry) { await loadChapter() }
         .task(id: "\(page ?? -1):\(pageRetry)") { await loadPage() }
+        .onDisappear { pageCache.keepOnly([]) }
         .sheet(isPresented: $showAccount) { AccountScreen() }
         .fullScreenCover(isPresented: $showWeb) {
             if let series { OnlineReaderScreen(series: series, initialAddress: chapter?.address) }
@@ -266,13 +273,17 @@ struct NativeReaderScreen: View {
             urls = pages
             page = min(resumePage, pages.count - 1)
         } catch {
-            if !Task.isCancelled { chapterFailed = true }
+            if !Task.isCancelled {
+                chapterFailureMessage = (error as? ChapterDownloadError)?.localizedDescription ??
+                    "The provider’s pages couldn’t load."
+                chapterFailed = true
+            }
         }
     }
 
     private var resumePage: Int {
         guard let series, let chapter, let position = library.position(series),
-              position.address.pathComponents == chapter.address.pathComponents else { return 0 }
+              Series.readerPath(position.address) == Series.readerPath(chapter.address) else { return 0 }
         return max(0, position.pageIndex ?? 0)
     }
 
@@ -287,7 +298,10 @@ struct NativeReaderScreen: View {
                 decoded = try await withTaskCancellationHandler(operation: { try await task.value },
                                                                 onCancel: { task.cancel() })
             } else if let chapter, urls.indices.contains(page) {
-                decoded = try await ComicArchive.onlineImage(urls[page], chapter: chapter)
+                let url = urls[page]
+                let nearby = Array(urls[page..<min(page + 3, urls.count)])
+                pageCache.keepOnly(nearby)
+                decoded = try await pageCache.load(url, chapter: chapter)
             } else { return }
             guard !Task.isCancelled, self.page == page else { return }
             image = decoded
@@ -295,9 +309,56 @@ struct NativeReaderScreen: View {
             if let series, let chapter {
                 library.remember(series, address: chapter.address, scroll: 0, pageIndex: page)
             }
+            if book == nil, let chapter {
+                for url in urls.dropFirst(page + 1).prefix(2) {
+                    pageCache.prefetch(url, chapter: chapter)
+                }
+            }
         } catch {
             if !Task.isCancelled { pageFailed = true }
         }
+    }
+}
+
+@MainActor
+private final class ReaderPageCache {
+    private let cache = NSCache<NSURL, UIImage>()
+    private var requests: [URL: Task<UIImage, Error>] = [:]
+
+    init() {
+        cache.countLimit = 4
+        cache.totalCostLimit = 48 * 1024 * 1024
+    }
+
+    func load(_ url: URL, chapter: DownloadChapter) async throws -> UIImage {
+        if let image = cache.object(forKey: url as NSURL) { return image }
+        return try await request(url, chapter: chapter, priority: .userInitiated).value
+    }
+
+    func prefetch(_ url: URL, chapter: DownloadChapter) {
+        guard cache.object(forKey: url as NSURL) == nil else { return }
+        _ = request(url, chapter: chapter, priority: .utility)
+    }
+
+    func keepOnly(_ urls: [URL]) {
+        for url in Array(requests.keys) where !urls.contains(url) {
+            requests.removeValue(forKey: url)?.cancel()
+        }
+    }
+
+    private func request(_ url: URL, chapter: DownloadChapter, priority: TaskPriority) -> Task<UIImage, Error> {
+        if let existing = requests[url] { return existing }
+        let task = Task(priority: priority) { [weak self] in
+            defer { if !Task.isCancelled { self?.requests.removeValue(forKey: url) } }
+            let image = try await ComicArchive.onlineImage(url, chapter: chapter)
+            try Task.checkCancellation()
+            if let bitmap = image.cgImage {
+                self?.cache.setObject(image, forKey: url as NSURL, cost: bitmap.bytesPerRow * bitmap.height)
+            }
+            return image
+        }
+        requests[url] = task
+        return task
     }
 }
 
