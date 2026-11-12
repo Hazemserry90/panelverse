@@ -5,7 +5,7 @@ import WebKit
 @MainActor
 struct OnlineReaderScreen: View {
     let series: Series
-    var browseForDownload = false
+    var initialAddress: URL?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var library: LibraryStore
     @EnvironmentObject private var downloads: ChapterDownloads
@@ -19,7 +19,12 @@ struct OnlineReaderScreen: View {
     @State private var downloadSource: ReaderDownloadSource?
     @State private var showAccount = false
 
-    private var entryAddress: URL { browseForDownload ? series.chapterListAddress : series.address }
+    private var entryAddress: URL { initialAddress ?? series.address }
+    private var savedPosition: ReadingPosition? {
+        guard let position = library.position(series) else { return nil }
+        if let initialAddress, initialAddress.pathComponents != position.address.pathComponents { return nil }
+        return position
+    }
 
     var body: some View {
         NavigationStack {
@@ -39,7 +44,7 @@ struct OnlineReaderScreen: View {
                         Button("Retry") {
                             error = false
                             loading = true
-                            start = browseForDownload ? nil : library.position(series)
+                            start = savedPosition
                             reload += 1
                         }
                         .buttonStyle(.borderedProminent)
@@ -82,7 +87,7 @@ struct OnlineReaderScreen: View {
         }
         .onAppear {
             if !ready {
-                start = browseForDownload ? nil : library.position(series)
+                start = savedPosition
                 ready = true
             }
         }
@@ -106,12 +111,6 @@ struct OnlineReaderScreen: View {
             .disabled(saved || (!guest && downloads.active != nil))
             .padding(8)
             .background(Ink.background)
-        } else if browseForDownload {
-            Text(series.isManga ? "Choose a chapter to download." : "Choose an issue to download.")
-                .font(.subheadline)
-                .frame(maxWidth: .infinity)
-                .padding(12)
-                .background(Ink.background)
         }
     }
 }
@@ -167,22 +166,11 @@ private struct ProviderWebView: UIViewRepresentable {
 
         func open(_ view: WKWebView, at address: URL) {
             self.view = view
-            guard let store = WKContentRuleListStore.default() else {
+            Task { [weak view, weak self] in
+                let rules = await ReaderAdFilter.compiledRules()
+                guard let view, let self, self.view === view else { return }
+                if let rules { view.configuration.userContentController.add(rules) }
                 view.load(URLRequest(url: address))
-                return
-            }
-            store.compileContentRuleList(forIdentifier: "PanelVerseReaderAdsV2",
-                                         encodedContentRuleList: ReaderAdFilter.rules) { [weak view, weak self] list, error in
-                Task { @MainActor in
-                    guard let view, let self, self.view === view else { return }
-                    if let list { view.configuration.userContentController.add(list) }
-                    else if let error {
-                        let code = (error as NSError).code
-                        Logger(subsystem: "com.hazemserry.panelverse", category: "Reader")
-                            .error("WebKit ad rules could not compile (\(code, privacy: .public))")
-                    }
-                    view.load(URLRequest(url: address))
-                }
             }
         }
 
@@ -301,7 +289,8 @@ private struct ProviderWebView: UIViewRepresentable {
     }
 }
 
-private enum ReaderAdFilter {
+enum ReaderAdFilter {
+    @MainActor private static var ruleTask: Task<WKContentRuleList?, Never>?
     private static let adHosts = [
         "2mdn.net", "adnxs.com", "adsrvr.org", "doubleclick.net", "googlesyndication.com",
         "googleadservices.com", "pubmatic.com", "adsterra.com", "adskeeper.com", "inspiredot.net",
@@ -314,7 +303,7 @@ private enum ReaderAdFilter {
         "hcaptcha.com": "/", "assets.hcaptcha.com": "/", "newassets.hcaptcha.com": "/"
     ]
 
-    static let rules: String = {
+    private static let rules: String = {
         let thirdParty: [String: Any] = [
             "url-filter": "^https?://", "load-type": ["third-party"], "resource-type": ["script", "document"]
         ]
@@ -345,6 +334,26 @@ private enum ReaderAdFilter {
         ])
         return (try? JSONSerialization.data(withJSONObject: list)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
     }()
+
+    @MainActor static func compiledRules() async -> WKContentRuleList? {
+        if let ruleTask { return await ruleTask.value }
+        let task = Task { @MainActor () -> WKContentRuleList? in
+            guard let store = WKContentRuleListStore.default() else { return nil }
+            return await withCheckedContinuation { continuation in
+                store.compileContentRuleList(forIdentifier: "PanelVerseReaderAdsV2",
+                                             encodedContentRuleList: rules) { list, error in
+                    if let error {
+                        let code = (error as NSError).code
+                        Logger(subsystem: "com.hazemserry.panelverse", category: "Reader")
+                            .error("WebKit ad rules could not compile (\(code, privacy: .public))")
+                    }
+                    continuation.resume(returning: list)
+                }
+            }
+        }
+        ruleTask = task
+        return await task.value
+    }
 
     static func allowsVerificationFrame(_ url: URL) -> Bool {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),

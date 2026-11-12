@@ -59,6 +59,7 @@ struct ReadingPosition: Codable {
     let address: URL
     let scroll: Double
     let updatedAt: Date
+    var pageIndex: Int? = nil
 }
 
 struct OfflineBook: Codable, Identifiable, Hashable, Sendable {
@@ -66,6 +67,7 @@ struct OfflineBook: Codable, Identifiable, Hashable, Sendable {
     let title: String
     let pageCount: Int
     var source: URL? = nil
+    var seriesID: String? = nil
 }
 
 @MainActor
@@ -109,9 +111,10 @@ final class LibraryStore: ObservableObject {
         persist()
     }
 
-    func remember(_ series: Series, address: URL, scroll: Double) {
+    func remember(_ series: Series, address: URL, scroll: Double, pageIndex: Int? = nil) {
         guard series.isChapter(address), scroll.isFinite else { return }
-        record.positions[series.id] = ReadingPosition(address: address, scroll: max(0, scroll), updatedAt: .now)
+        record.positions[series.id] = ReadingPosition(address: address, scroll: max(0, scroll), updatedAt: .now,
+                                                      pageIndex: pageIndex)
         if record.lists[series.id] != .finished { record.lists[series.id] = .reading }
         persist()
     }
@@ -129,7 +132,11 @@ final class LibraryStore: ObservableObject {
     }
 
     func page(_ book: OfflineBook) -> Int {
-        min(max(record.offlinePositions[book.id] ?? 0, 0), max(book.pageCount - 1, 0))
+        rememberedPage(book) ?? 0
+    }
+
+    func rememberedPage(_ book: OfflineBook) -> Int? {
+        record.offlinePositions[book.id].map { min(max($0, 0), max(book.pageCount - 1, 0)) }
     }
 
     func rememberPage(_ index: Int, of book: OfflineBook) {

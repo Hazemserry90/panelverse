@@ -86,70 +86,249 @@ struct OfflineScreen: View {
 @MainActor
 struct OfflineReader: View {
     let book: OfflineBook
+
+    var body: some View { NativeReaderScreen(book: book) }
+}
+
+@MainActor
+struct NativeReaderScreen: View {
+    let book: OfflineBook?
+    let series: Series?
+    let chapter: DownloadChapter?
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var library: LibraryStore
+    @EnvironmentObject private var account: AccountStore
+    @EnvironmentObject private var downloads: ChapterDownloads
+    @State private var urls: [URL] = []
     @State private var page: Int?
     @State private var image: UIImage?
-    @State private var failed = false
-    @State private var retry = 0
+    @State private var chapterFailed = false
+    @State private var pageFailed = false
+    @State private var chapterRetry = 0
+    @State private var pageRetry = 0
+    @State private var directionOverride: Bool?
+    @State private var showWeb = false
+    @State private var showAccount = false
+
+    init(series: Series, chapter: DownloadChapter) {
+        book = nil
+        self.series = series
+        self.chapter = chapter
+    }
+
+    init(book: OfflineBook, series: Series? = nil) {
+        self.book = book
+        let matches = book.source.map { url in Series.catalog.filter { $0.isChapter(url) } } ?? []
+        let match = series ?? matches.first { $0.id == book.seriesID } ?? (matches.count == 1 ? matches.first : nil)
+        self.series = match
+        chapter = match.flatMap { series in book.source.flatMap { DownloadChapter(series: series, url: $0) } }
+    }
+
+    private var pageCount: Int { book?.pageCount ?? urls.count }
+    private var title: String { book?.title ?? chapter?.title ?? "Reader" }
+    private var rightToLeft: Bool {
+        directionOverride ?? series?.isManga ?? (book?.source?.pathComponents.dropFirst().first == "manga")
+    }
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Button("Back") { dismiss() }.buttonStyle(ReaderPillButtonStyle())
+                Text(title)
+                    .font(.subheadline)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                readerOptions
+            }
+            .padding(8)
+
             ZStack {
                 Ink.background
-                if let image {
-                    ZoomablePage(image: image)
+                if let image, let page {
+                    ZoomablePage(image: image) { direction in
+                        let forward = (direction == .left) != rightToLeft
+                        movePage(by: forward ? 1 : -1)
+                    }
                         .id(page)
-                        .accessibilityLabel("Page \((page ?? 0) + 1)")
-                } else if failed {
-                    Button("Page couldn’t load. Retry") { retry += 1 }
+                        .accessibilityLabel("Page \(page + 1) of \(pageCount)")
+                } else if chapterFailed || pageFailed {
+                    VStack(spacing: 12) {
+                        Text(chapterFailed ? "The provider’s pages couldn’t load." : "Page \((page ?? 0) + 1) couldn’t load.")
+                            .multilineTextAlignment(.center)
+                        Button("Retry") {
+                            if chapterFailed { chapterRetry += 1 }
+                            else { pageRetry += 1 }
+                        }
+                        .buttonStyle(ReaderPillButtonStyle())
+                        if book == nil, series != nil {
+                            Button("Open in web reader") { showWeb = true }
+                                .buttonStyle(.bordered)
+                        }
+                    }
+                    .padding()
                 } else {
-                    ProgressView()
+                    ProgressView().accessibilityLabel("Loading page")
                 }
             }
-            HStack {
-                Button("Previous") { if let page { self.page = page - 1 } }
-                    .disabled((page ?? 0) <= 0)
-                Spacer()
-                Text("\((page ?? 0) + 1) / \(book.pageCount)").font(.subheadline.monospacedDigit())
-                Spacer()
-                Button("Next") { if let page { self.page = page + 1 } }
-                    .disabled(page == nil || (page ?? 0) + 1 >= book.pageCount)
-            }
-            .buttonStyle(.bordered)
-            .padding([.horizontal, .bottom], 12)
+            if pageCount > 0 { pageControls }
+            DownloadStatus()
         }
         .background(Ink.background)
-        .navigationTitle(book.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear { if page == nil { page = library.page(book) } }
-        .task(id: "\(page ?? -1):\(retry)") { await loadPage() }
+        .toolbar(.hidden, for: .navigationBar, .tabBar)
+        .task(id: chapterRetry) { await loadChapter() }
+        .task(id: "\(page ?? -1):\(pageRetry)") { await loadPage() }
+        .sheet(isPresented: $showAccount) { AccountScreen() }
+        .fullScreenCover(isPresented: $showWeb) {
+            if let series { OnlineReaderScreen(series: series, initialAddress: chapter?.address) }
+        }
+    }
+
+    private var readerOptions: some View {
+        Menu {
+            Button("Right to left") { directionOverride = true }
+            Button("Left to right") { directionOverride = false }
+            if let chapter, book == nil {
+                Button("Open in web reader") { showWeb = true }
+                if !urls.isEmpty && !library.books.contains(where: { $0.source == chapter.address }) {
+                    Button(account.userID == nil ? "Sign in to download" :
+                           (chapter.isManga ? "Download chapter" : "Download issue")) {
+                        if account.currentUserID == nil { showAccount = true }
+                        else {
+                            let pages = urls
+                            downloads.start(chapter, library: library, account: account) { pages }
+                        }
+                    }
+                    .disabled(account.userID != nil && downloads.active != nil)
+                }
+            }
+        } label: {
+            Text("Reader options")
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .foregroundStyle(Ink.paper)
+                .background(Ink.accent, in: Capsule())
+        }
+    }
+
+    private var pageControls: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                if rightToLeft { nextButton } else { previousButton }
+                Slider(value: Binding(get: { Double(page ?? 0) }, set: { page = Int($0) }),
+                       in: 0...Double(max(1, pageCount - 1)), step: 1)
+                    .environment(\.layoutDirection, rightToLeft ? .rightToLeft : .leftToRight)
+                    .accessibilityLabel("Page")
+                    .accessibilityValue("\((page ?? 0) + 1) of \(pageCount)")
+                    .disabled(page == nil || pageCount < 2)
+                if rightToLeft { previousButton } else { nextButton }
+            }
+            Text("\((page ?? 0) + 1) / \(pageCount)").font(.subheadline.monospacedDigit())
+            ProgressView(value: Double((page ?? 0) + 1), total: Double(pageCount))
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, 8)
+        .padding(.bottom, 6)
+    }
+
+    private var previousButton: some View {
+        Button("Previous") { movePage(by: -1) }
+            .buttonStyle(ReaderPillButtonStyle())
+            .disabled((page ?? 0) <= 0)
+    }
+
+    private var nextButton: some View {
+        Button("Next") { movePage(by: 1) }
+            .buttonStyle(ReaderPillButtonStyle())
+            .disabled(page == nil || (page ?? 0) + 1 >= pageCount)
+    }
+
+    private func movePage(by delta: Int) {
+        guard let page, (0..<pageCount).contains(page + delta) else { return }
+        self.page = page + delta
+    }
+
+    private func loadChapter() async {
+        if let book {
+            if page == nil {
+                page = library.rememberedPage(book) ?? min(resumePage, max(0, book.pageCount - 1))
+            }
+            return
+        }
+        guard urls.isEmpty, let series, let chapter else { return }
+        chapterFailed = false
+        do {
+            let pages = try await ProviderReaderLoader.pages(for: series, chapter: chapter)
+            try Task.checkCancellation()
+            urls = pages
+            page = min(resumePage, pages.count - 1)
+        } catch {
+            if !Task.isCancelled { chapterFailed = true }
+        }
+    }
+
+    private var resumePage: Int {
+        guard let series, let chapter, let position = library.position(series),
+              position.address.pathComponents == chapter.address.pathComponents else { return 0 }
+        return max(0, position.pageIndex ?? 0)
     }
 
     private func loadPage() async {
         guard let page else { return }
         image = nil
-        failed = false
+        pageFailed = false
         do {
-            let task = Task.detached(priority: .userInitiated) { try ComicArchive.image(for: book, page: page) }
-            let decoded = try await withTaskCancellationHandler(operation: { try await task.value },
+            let decoded: UIImage
+            if let book {
+                let task = Task.detached(priority: .userInitiated) { try ComicArchive.image(for: book, page: page) }
+                decoded = try await withTaskCancellationHandler(operation: { try await task.value },
                                                                 onCancel: { task.cancel() })
+            } else if let chapter, urls.indices.contains(page) {
+                decoded = try await ComicArchive.onlineImage(urls[page], chapter: chapter)
+            } else { return }
             guard !Task.isCancelled, self.page == page else { return }
             image = decoded
-            library.rememberPage(page, of: book)
+            if let book { library.rememberPage(page, of: book) }
+            if let series, let chapter {
+                library.remember(series, address: chapter.address, scroll: 0, pageIndex: page)
+            }
         } catch {
-            if !Task.isCancelled { failed = true }
+            if !Task.isCancelled { pageFailed = true }
         }
+    }
+}
+
+struct ReaderPillButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .foregroundStyle(isEnabled ? Ink.paper : Color.secondary)
+            .background(isEnabled ? Ink.accent : Ink.panel, in: Capsule())
+            .opacity(configuration.isPressed ? 0.78 : 1)
     }
 }
 
 private struct ZoomablePage: UIViewRepresentable {
     let image: UIImage
+    let onSwipe: (UISwipeGestureRecognizer.Direction) -> Void
 
     func makeUIView(context: Context) -> ZoomScrollView { ZoomScrollView() }
-    func updateUIView(_ view: ZoomScrollView, context: Context) { view.imageView.image = image }
+    func updateUIView(_ view: ZoomScrollView, context: Context) {
+        view.imageView.image = image
+        view.onSwipe = onSwipe
+    }
 
     final class ZoomScrollView: UIScrollView, UIScrollViewDelegate {
         let imageView = UIImageView()
+        var onSwipe: ((UISwipeGestureRecognizer.Direction) -> Void)?
         private var previousSize = CGSize.zero
 
         init() {
@@ -164,6 +343,11 @@ private struct ZoomablePage: UIViewRepresentable {
             let tap = UITapGestureRecognizer(target: self, action: #selector(toggleZoom(_:)))
             tap.numberOfTapsRequired = 2
             addGestureRecognizer(tap)
+            for direction in [UISwipeGestureRecognizer.Direction.left, .right] {
+                let swipe = UISwipeGestureRecognizer(target: self, action: #selector(turnPage(_:)))
+                swipe.direction = direction
+                addGestureRecognizer(swipe)
+            }
         }
 
         required init?(coder: NSCoder) { return nil }
@@ -179,6 +363,10 @@ private struct ZoomablePage: UIViewRepresentable {
         }
 
         func viewForZooming(in scrollView: UIScrollView) -> UIView? { imageView }
+
+        @objc private func turnPage(_ swipe: UISwipeGestureRecognizer) {
+            if zoomScale <= minimumZoomScale { onSwipe?(swipe.direction) }
+        }
 
         @objc private func toggleZoom(_ tap: UITapGestureRecognizer) {
             if zoomScale > 1 {

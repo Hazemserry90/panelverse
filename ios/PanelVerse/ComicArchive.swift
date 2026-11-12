@@ -9,6 +9,7 @@ enum ComicArchive {
     private static let expandedLimit: UInt64 = 512 * 1024 * 1024
     private static let imageTypes = ["jpg": "public.jpeg", "jpeg": "public.jpeg",
                                      "png": "public.png", "webp": "org.webmproject.webp"]
+    private static let readerSession = pageSession()
 
     enum ImportError: LocalizedError {
         case invalid, tooLarge
@@ -63,7 +64,15 @@ enum ComicArchive {
         let archive = try Archive(url: bookURL(book), accessMode: .read)
         let pages = try entries(in: archive)
         guard pages.indices.contains(page) else { throw ImportError.invalid }
-        let image = try readImage(pages[page], from: archive)
+        return try thumbnail(readImage(pages[page], from: archive))
+    }
+
+    static func onlineImage(_ url: URL, chapter: DownloadChapter) async throws -> UIImage {
+        let data = try await remotePage(url, chapter: chapter, limit: pageLimit, session: readerSession)
+        return try thumbnail(remoteImage(data).source)
+    }
+
+    private static func thumbnail(_ image: CGImageSource) throws -> UIImage {
         let options = [
             kCGImageSourceCreateThumbnailFromImageAlways as String: true,
             kCGImageSourceCreateThumbnailWithTransform as String: true,
@@ -86,37 +95,15 @@ enum ComicArchive {
         let file = staging.appendingPathComponent("book.cbz")
         let pageFile = staging.appendingPathComponent("page")
         let archive = try Archive(url: file, accessMode: .create)
-        let config = URLSessionConfiguration.ephemeral
-        config.httpShouldSetCookies = false
-        config.urlCredentialStorage = nil
-        config.timeoutIntervalForRequest = 20
-        config.timeoutIntervalForResource = 60
-        let session = URLSession(configuration: config, delegate: NoDownloadRedirects(), delegateQueue: nil)
+        let session = pageSession()
         defer { session.invalidateAndCancel() }
         var downloaded = 0
         for (index, url) in pages.enumerated() {
             try Task.checkCancellation()
             let limit = min(pageLimit, archiveLimit - downloaded)
             guard limit > 0 else { throw ImportError.tooLarge }
-            var request = URLRequest(url: url)
-            request.setValue("image/jpeg,image/png,image/webp,application/octet-stream", forHTTPHeaderField: "Accept")
-            request.setValue(chapter.address.absoluteString, forHTTPHeaderField: "Referer")
-            let (bytes, response) = try await session.bytes(for: request)
-            guard let response = response as? HTTPURLResponse, response.statusCode == 200,
-                  let finalURL = response.url, chapter.allowsImage(finalURL) else {
-                throw ChapterDownloadError.providerResponse
-            }
-            guard response.expectedContentLength <= Int64(limit) else { throw ImportError.tooLarge }
-            var data = Data()
-            for try await byte in bytes {
-                guard data.count < limit else { throw ImportError.tooLarge }
-                data.append(byte)
-            }
-            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-                  let type = CGImageSourceGetType(source),
-                  let ext = ["jpg", "png", "webp"].first(where: { imageTypes[$0] == (type as String) }),
-                  CGImageSourceGetStatus(source) == .statusComplete else { throw ChapterDownloadError.invalidPage }
-            try validateDimensions(source)
+            let data = try await remotePage(url, chapter: chapter, limit: limit, session: session)
+            let ext = try remoteImage(data).fileExtension
             try data.write(to: pageFile)
             let name = String(format: "%04d", index + 1) + "." + ext
             try archive.addEntry(with: name, fileURL: pageFile)
@@ -127,9 +114,47 @@ enum ComicArchive {
             await progress((index + 1) * 99 / pages.count)
         }
         try Task.checkCancellation()
-        let book = OfflineBook(id: id, title: chapter.title, pageCount: pages.count, source: chapter.address)
+        let book = OfflineBook(id: id, title: chapter.title, pageCount: pages.count,
+                               source: chapter.address, seriesID: chapter.seriesID)
         try FileManager.default.moveItem(at: file, to: bookURL(book))
         return book
+    }
+
+    private static func pageSession() -> URLSession {
+        let config = URLSessionConfiguration.ephemeral
+        config.httpShouldSetCookies = false
+        config.urlCredentialStorage = nil
+        config.timeoutIntervalForRequest = 20
+        config.timeoutIntervalForResource = 60
+        return URLSession(configuration: config, delegate: NoDownloadRedirects(), delegateQueue: nil)
+    }
+
+    private static func remotePage(_ url: URL, chapter: DownloadChapter, limit: Int,
+                                   session: URLSession) async throws -> Data {
+        guard chapter.allowsImage(url) else { throw ChapterDownloadError.pagesUnavailable }
+        var request = URLRequest(url: url)
+        request.setValue("image/jpeg,image/png,image/webp,application/octet-stream", forHTTPHeaderField: "Accept")
+        request.setValue(chapter.address.absoluteString, forHTTPHeaderField: "Referer")
+        let (bytes, response) = try await session.bytes(for: request)
+        defer { bytes.task.cancel() }
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let finalURL = http.url, chapter.allowsImage(finalURL) else { throw ChapterDownloadError.providerResponse }
+        guard response.expectedContentLength <= Int64(limit) else { throw ImportError.tooLarge }
+        var data = Data()
+        for try await byte in bytes {
+            guard data.count < limit else { throw ImportError.tooLarge }
+            data.append(byte)
+        }
+        return data
+    }
+
+    private static func remoteImage(_ data: Data) throws -> (source: CGImageSource, fileExtension: String) {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let type = CGImageSourceGetType(source),
+              let ext = ["jpg", "png", "webp"].first(where: { imageTypes[$0] == (type as String) }),
+              CGImageSourceGetStatus(source) == .statusComplete else { throw ChapterDownloadError.invalidPage }
+        try validateDimensions(source)
+        return (source, ext)
     }
 
     static func remove(_ book: OfflineBook) throws {
