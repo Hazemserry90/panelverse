@@ -154,17 +154,19 @@ struct SeriesScreen: View {
     }
 
     private var displayedChapters: [DownloadChapter] {
-        let listed = Set(chapters.map(\.address))
+        var listed = Set(chapters.map(\.address))
         let offline = library.books.compactMap { book -> DownloadChapter? in
             guard let url = book.source, let entry = DownloadChapter(series: series, url: url),
-                  !listed.contains(entry.address) else { return nil }
+                  listed.insert(entry.address).inserted else { return nil }
             return entry
         }
         return (chapters + offline).sorted {
             let first = $0.number ?? .infinity
             let second = $1.number ?? .infinity
             if first != second { return first < second }
-            return $0.entryTitle.localizedStandardCompare($1.entryTitle) == .orderedAscending
+            let comparison = $0.entryTitle.localizedStandardCompare($1.entryTitle)
+            if comparison != .orderedSame { return comparison == .orderedAscending }
+            return $0.address.absoluteString < $1.address.absoluteString
         }
     }
 
@@ -228,7 +230,7 @@ struct SeriesScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: retryList) { await loadChapters() }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if downloads.failure != nil || downloads.completed != nil { DownloadStatus() }
+            if downloads.failure != nil { DownloadStatus() }
         }
         .fullScreenCover(item: $reader) { destination in
             switch destination {
@@ -279,7 +281,7 @@ struct SeriesScreen: View {
     private func chapterRow(_ chapter: DownloadChapter) -> some View {
         let book = library.books.first { $0.source == chapter.address }
         let active = downloads.active?.address == chapter.address
-        let label = book != nil ? "Open offline" :
+        let label: LocalizedStringKey = book != nil ? "Open offline" :
             (active ? (downloads.cancelling ? "Cancelling…" : "Cancel \(downloads.percent)%") :
                 (account.userID == nil ? "Sign in" : "Download"))
         return HStack(spacing: 8) {
@@ -291,7 +293,7 @@ struct SeriesScreen: View {
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             }
             .buttonStyle(.plain)
-            Button(label) {
+            Button {
                 if let book { reader = .offline(book) }
                 else if active { downloads.cancel() }
                 else if account.currentUserID == nil { showAccount = true }
@@ -300,10 +302,23 @@ struct SeriesScreen: View {
                         try await ProviderReaderLoader.pages(for: series, chapter: chapter)
                     }
                 }
+            } label: {
+                ZStack {
+                    // Reserve the widest action so progress and completion never rewrap the title.
+                    Text("Cancel 100%").hidden()
+                    Text("Cancelling…").hidden()
+                    Text("Open offline").hidden()
+                    Text("Download").hidden()
+                    Text("Sign in").hidden()
+                    Text(label)
+                }
+                .monospacedDigit()
+                .fixedSize(horizontal: true, vertical: false)
             }
             .buttonStyle(ReaderPillButtonStyle())
             .disabled(active ? downloads.cancelling : (book == nil && account.userID != nil && downloads.active != nil))
-            .accessibilityLabel("\(label): \(chapter.entryTitle)")
+            .accessibilityLabel(Text(label))
+            .accessibilityHint(Text(chapter.entryTitle))
         }
     }
 
