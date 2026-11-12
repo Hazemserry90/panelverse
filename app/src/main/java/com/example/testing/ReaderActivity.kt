@@ -184,7 +184,7 @@ class ReaderActivity : AppCompatActivity() {
                 val blocked = if (initialProvider == "mangakatana.com") {
                     ReaderAdHosts.blocksMangaKatanaResource(url.host, url.path, request.requestHeaders)
                 } else {
-                    ReaderAdHosts.blocks(url.host)
+                    ReaderAdHosts.blocksComicResource(url.host, url.path, request.requestHeaders)
                 }
                 if (!blocked) return null
                 return WebResourceResponse(
@@ -194,7 +194,17 @@ class ReaderActivity : AppCompatActivity() {
             }
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                if (!request.isForMainFrame) return false
+                if (!request.isForMainFrame) {
+                    if (!blockAds) return false
+                    val url = request.url
+                    if (url.scheme != "http" && url.scheme != "https") return url.scheme != "about"
+                    val headers = mapOf("Sec-Fetch-Dest" to "iframe")
+                    return if (initialProvider == "mangakatana.com") {
+                        ReaderAdHosts.blocksMangaKatanaResource(url.host, url.path, headers)
+                    } else {
+                        ReaderAdHosts.blocksComicResource(url.host, url.path, headers)
+                    }
+                }
                 if (providerFor(request.url.toString()) == provider) {
                     saveProgress()
                     return false

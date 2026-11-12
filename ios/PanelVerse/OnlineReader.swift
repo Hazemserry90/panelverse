@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 import WebKit
 
@@ -131,6 +132,8 @@ private struct ProviderWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.ignoresViewportScaleLimits = true
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
+        ReaderAdFilter.installScript(in: configuration.userContentController)
         let view = WKWebView(frame: .zero, configuration: configuration)
         view.navigationDelegate = context.coordinator
         view.scrollView.delegate = context.coordinator
@@ -164,20 +167,20 @@ private struct ProviderWebView: UIViewRepresentable {
 
         func open(_ view: WKWebView, at address: URL) {
             self.view = view
-            let rules = """
-            [
-              {"trigger":{"url-filter":"^https?://([^/]+[.])?(doubleclick[.]net|googlesyndication[.]com|adskeeper[.]com|adsterra[.]com|popads[.]net)/"},"action":{"type":"block"}},
-              {"trigger":{"url-filter":".*"},"action":{"type":"css-display-none","selector":"ins.adsbygoogle,[data-ad-slot],.ad-overlay,#ad-overlay,.ad-popup,#ad-popup"}}
-            ]
-            """
             guard let store = WKContentRuleListStore.default() else {
                 view.load(URLRequest(url: address))
                 return
             }
-            store.compileContentRuleList(forIdentifier: "PanelVerseAds", encodedContentRuleList: rules) { [weak view, weak self] list, _ in
+            store.compileContentRuleList(forIdentifier: "PanelVerseReaderAdsV2",
+                                         encodedContentRuleList: ReaderAdFilter.rules) { [weak view, weak self] list, error in
                 Task { @MainActor in
                     guard let view, let self, self.view === view else { return }
                     if let list { view.configuration.userContentController.add(list) }
+                    else if let error {
+                        let code = (error as NSError).code
+                        Logger(subsystem: "com.hazemserry.panelverse", category: "Reader")
+                            .error("WebKit ad rules could not compile (\(code, privacy: .public))")
+                    }
                     view.load(URLRequest(url: address))
                 }
             }
@@ -192,7 +195,7 @@ private struct ProviderWebView: UIViewRepresentable {
             if frame.isMainFrame {
                 decisionHandler(parent.series.contains(url) ? .allow : .cancel)
             } else {
-                decisionHandler(parent.series.allows(url) ? .allow : .cancel)
+                decisionHandler(parent.series.allows(url) || ReaderAdFilter.allowsVerificationFrame(url) ? .allow : .cancel)
             }
         }
 
@@ -230,13 +233,6 @@ private struct ProviderWebView: UIViewRepresentable {
             page = webView.url
             if let url = page, let chapter = DownloadChapter(series: parent.series, url: url) {
                 parent.onDownloadSource(ReaderDownloadSource(chapter: chapter, visibleURL: url, view: webView))
-            }
-            if let url = page, parent.series.allows(url),
-               let file = Bundle.main.url(forResource: "reader-page", withExtension: "js"),
-               let script = try? String(contentsOf: file, encoding: .utf8),
-               let data = try? JSONEncoder().encode(url.absoluteString),
-               let encoded = String(data: data, encoding: .utf8) {
-                webView.evaluateJavaScript("(\(script))('ads-on',\(encoded),null)", completionHandler: nil)
             }
             if !restored, let initial = parent.initial, initial.address == page, initial.scroll > 0 {
                 restored = true
@@ -302,5 +298,75 @@ private struct ProviderWebView: UIViewRepresentable {
             parent.loading = false
             parent.failed = true
         }
+    }
+}
+
+private enum ReaderAdFilter {
+    private static let adHosts = [
+        "2mdn.net", "adnxs.com", "adsrvr.org", "doubleclick.net", "googlesyndication.com",
+        "googleadservices.com", "pubmatic.com", "adsterra.com", "adskeeper.com", "inspiredot.net",
+        "mgid.com", "clickadu.com", "exoclick.com", "hilltopads.net", "popads.net",
+        "popcash.net", "propellerads.com", "trafficjunky.net"
+    ]
+    private static let verification: [String: String] = [
+        "challenges.cloudflare.com": "/", "www.google.com": "/recaptcha/",
+        "www.recaptcha.net": "/recaptcha/", "www.gstatic.com": "/recaptcha/",
+        "hcaptcha.com": "/", "assets.hcaptcha.com": "/", "newassets.hcaptcha.com": "/"
+    ]
+
+    static let rules: String = {
+        let thirdParty: [String: Any] = [
+            "url-filter": "^https?://", "load-type": ["third-party"], "resource-type": ["script", "document"]
+        ]
+        var list: [[String: Any]] = [["trigger": thirdParty, "action": ["type": "block"]]]
+        let providerAssets = ["mangakatana.com", "readcomicsonline.ru"].map { host in
+            "^https://([a-z0-9-]+[.])*" + hostPattern(host) + "/"
+        }
+        let verificationAssets = verification.sorted { $0.key < $1.key }.map { host, path in
+            "^https://" + hostPattern(host) + path
+        }
+        let scriptLibraries = [
+            "^https://code[.]jquery[.]com/jquery-",
+            "^https://ajax[.]googleapis[.]com/ajax/libs/jquery/",
+            "^https://cdnjs[.]cloudflare[.]com/ajax/libs/jquery/",
+            "^https://cdnjs[.]cloudflare[.]com/ajax/libs/bootstrap/"
+        ]
+        for filter in providerAssets + verificationAssets + scriptLibraries {
+            list.append(rule(filter, action: "ignore-previous-rules"))
+        }
+        // WebKit rejects alternation in URL filters, so each ad host gets its own rule.
+        for host in adHosts {
+            list.append(rule("^https?://([a-z0-9-]+[.])*" + hostPattern(host) + "[/:]", action: "block"))
+        }
+        list.append([
+            "trigger": ["url-filter": ".*"],
+            "action": ["type": "css-display-none",
+                       "selector": "[data-panelverse-hidden-ad],ins.adsbygoogle,[data-ad-slot],[data-ad-client],.ad-banner,.ad-overlay,.ad-popup"]
+        ])
+        return (try? JSONSerialization.data(withJSONObject: list)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+    }()
+
+    static func allowsVerificationFrame(_ url: URL) -> Bool {
+        guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              parts.scheme?.lowercased() == "https", parts.user == nil, parts.password == nil,
+              parts.port == nil || parts.port == 443, let host = parts.host?.lowercased(),
+              let prefix = verification[host] else { return false }
+        return parts.path.hasPrefix(prefix)
+    }
+
+    @MainActor static func installScript(in controller: WKUserContentController) {
+        guard let file = Bundle.main.url(forResource: "reader-page", withExtension: "js"),
+              let script = try? String(contentsOf: file, encoding: .utf8) else { return }
+        let source = "(\(script))('ads-on', location.href, null);"
+        controller.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentStart,
+                                              forMainFrameOnly: true, in: .defaultClient))
+    }
+
+    private static func hostPattern(_ host: String) -> String {
+        host.replacingOccurrences(of: ".", with: "[.]")
+    }
+
+    private static func rule(_ filter: String, action: String) -> [String: Any] {
+        ["trigger": ["url-filter": filter], "action": ["type": action]]
     }
 }

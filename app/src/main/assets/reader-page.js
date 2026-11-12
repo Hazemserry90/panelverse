@@ -35,11 +35,14 @@ function (operation, expectedUrl, anchor) {
 
     const hiddenAd = "data-panelverse-hidden-ad";
     const adSelectors =
-        'ins.adsbygoogle,[data-ad-slot],[data-ad-client],.ad-banner,.ad-slot,' +
-        '.ad-popup,#ad-popup,.ad-overlay,#ad-overlay,[data-type="_mgwidget"][data-widget-id],' +
+        'ins.adsbygoogle,[data-ad-slot],[data-ad-client],[data-ad-unit],[data-ad-zone],' +
+        '.ad-banner,.ad-slot,.ad-container,.advertisement,.ad-popup,#ad-popup,.ad-overlay,#ad-overlay,' +
+        '[data-type="_mgwidget"][data-widget-id],a[rel~="sponsored"],' +
         '[' + hiddenAd + ']';
 
     if (operation === 'ads-on' || operation === 'ads-off') {
+        if (!['mangakatana.com', 'www.mangakatana.com', 'readcomicsonline.ru', 'www.readcomicsonline.ru']
+            .includes(location.hostname)) return null;
         const existing = document.getElementById('panelverse-ad-filter');
         if (operation === 'ads-off') {
             if (existing) {
@@ -54,23 +57,72 @@ function (operation, expectedUrl, anchor) {
             style.id = 'panelverse-ad-filter';
             style.textContent = adSelectors + '{display:none!important}';
             (document.head || document.documentElement).appendChild(style);
-            if (location.hostname === 'mangakatana.com' || location.hostname === 'www.mangakatana.com') {
-                watchMangaAds(style);
-            }
+            watchReaderAds(style);
         }
         return null;
     }
 
-    function watchMangaAds(style) {
+    function watchReaderAds(style) {
         const prompt = /click\s+["'“”]?\s*allow\s*["'“”]?\s+if\s+you\s+are\s+not\s+a\s+robot/i;
         const ageAd = /confirm\s+that\s+you['’]re\s+over\s+18\s+and\s+then\s+click\s+["'“”]?allow["'“”]?\s+to\s+view\s+the\s+site/i;
         const fakeCaptcha = /\be[\s–-]*captcha\b/i;
         const closeLabel = /^(?:close|dismiss|[x×✕✖])$/i;
+        const adBrand = /\b(?:adskeeper|inspiredot|interesting for you)\b/i;
+        const notificationTime = /\b(?:now|\d+ (?:seconds?|minutes?) ago)\b/i;
+        const chapterPath = /^\/(?:manga|comic)\/[^/]+\/[^/]+\/?$/.test(location.pathname);
+        const readerImages = '#imgs [id^="page"] img,#reader-all img,#all img';
+        const pageControls = 'form,select,nav,header,footer';
         const protectedContent = 'img, picture, video, canvas, form, select, nav, header, footer';
         let pendingScan = null;
 
+        function containsReaderPage(element) {
+            return element.matches(readerImages) || element.querySelector(readerImages) !== null;
+        }
+
         function hideAd(element) {
-            element.setAttribute(hiddenAd, '');
+            if (!containsReaderPage(element)) element.setAttribute(hiddenAd, '');
+        }
+
+        function hasCloseControl(element) {
+            return [...element.querySelectorAll('button,a,[role="button"],[aria-label],[title],[onclick],[class*="close"]')]
+                .some(control => {
+                    const label = (control.getAttribute('aria-label') ||
+                        control.getAttribute('title') || control.textContent).trim();
+                    return closeLabel.test(label) || (control.matches('[class*="close"]') && !label);
+                });
+        }
+
+        function markInlineBanners(body) {
+            if (!chapterPath) return;
+            for (const media of body.querySelectorAll('a[href] img,a[href] video,a[href] canvas')) {
+                const link = media.closest('a[href]');
+                if (link.closest(pageControls) || containsReaderPage(link)) continue;
+                let destination;
+                try { destination = new URL(link.href, location.href); } catch (_) { continue; }
+                if (!['https:', 'http:', 'javascript:'].includes(destination.protocol) ||
+                    destination.hostname.replace(/^www\./, '') === location.hostname.replace(/^www\./, '')) continue;
+                const bounds = media.getBoundingClientRect();
+                if (bounds.width >= innerWidth * 0.4 && bounds.height >= 64) hideAd(link);
+            }
+        }
+
+        function hideNotification(seed, checked) {
+            for (let box = seed, depth = 0; box && box !== document.body && depth < 9;
+                box = box.parentElement, depth++) {
+                if (checked.has(box)) break;
+                checked.add(box);
+                if (box.matches(pageControls) || box.querySelector(pageControls) || containsReaderPage(box)) break;
+                const bounds = box.getBoundingClientRect();
+                if (bounds.width < 140 || bounds.height < 60 || bounds.height > innerHeight * 0.75) continue;
+                const position = getComputedStyle(box).position;
+                if (position !== 'fixed' && position !== 'absolute') continue;
+                const text = box.innerText || box.textContent;
+                const notification = notificationTime.test(text) && box.querySelector('img,picture,video,[style*="background"]');
+                if ((adBrand.test(text) || notification) && hasCloseControl(box)) {
+                    hideAd(box);
+                    break;
+                }
+            }
         }
 
         function collapseSlot(label) {
@@ -79,8 +131,9 @@ function (operation, expectedUrl, anchor) {
             for (let box = label.parentElement, depth = 0; box && box !== document.body && depth < 5;
                 box = box.parentElement, depth++) {
                 const text = box.textContent.replace(/[\s|]+/g, ' ').trim();
+                const inlineSlot = chapterPath && !box.querySelector(pageControls) && !containsReaderPage(box);
                 if (!/^remove ad$/i.test(text) ||
-                    box.querySelector(protectedContent) ||
+                    (box.querySelector(protectedContent) && !inlineSlot) ||
                     box.getBoundingClientRect().height > innerHeight * 0.6) break;
                 slot = box;
             }
@@ -109,11 +162,7 @@ function (operation, expectedUrl, anchor) {
                 if (!overlay && brandedPrompt && bounds.height <= innerHeight) overlay = box;
                 if (!floating) continue;
 
-                const close = [...box.querySelectorAll('button, a, [role="button"], [aria-label], [title], [onclick], [class*="close"]')]
-                    .some(control => closeLabel.test((control.getAttribute('aria-label') ||
-                        control.getAttribute('title') || control.textContent).trim()) ||
-                        (control.matches('[class*="close"]') && !control.textContent.trim()));
-                if (brandedPrompt || (bounds.height <= innerHeight && close && /\bcontinue\b/i.test(text))) {
+                if (brandedPrompt || (bounds.height <= innerHeight && hasCloseControl(box) && /\bcontinue\b/i.test(text))) {
                     overlay = box;
                     break;
                 }
@@ -123,6 +172,7 @@ function (operation, expectedUrl, anchor) {
 
         function markFloatingAds(body) {
             for (const artwork of body.querySelectorAll('img')) {
+                if (artwork.matches(readerImages)) continue;
                 const artworkBounds = artwork.getBoundingClientRect();
                 if (artworkBounds.width < 80 || artworkBounds.width > innerWidth * 0.65 ||
                     artworkBounds.top < -8 || artworkBounds.top > innerHeight * 0.3 ||
@@ -141,11 +191,7 @@ function (operation, expectedUrl, anchor) {
                     const bounds = box.getBoundingClientRect();
                     if (bounds.width > innerWidth * 0.75 || bounds.height > innerHeight * 0.6 ||
                         box.querySelector('form, select, iframe, nav, header, footer')) break;
-                    const controls = [...box.querySelectorAll('button, a, [aria-label], [onclick], [class*="close"]')];
-                    if (controls.some(control =>
-                        closeLabel.test((control.getAttribute('aria-label') || control.textContent).trim()))) {
-                        hideAd(box);
-                    }
+                    if (hasCloseControl(box)) hideAd(box);
                     break;
                 }
             }
@@ -154,13 +200,18 @@ function (operation, expectedUrl, anchor) {
             const body = document.body;
             if (!style.isConnected || !body) return;
             markFloatingAds(body);
+            markInlineBanners(body);
             const checked = new Set();
+            const checkedNotifications = new Set();
             const text = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
             for (let node = text.nextNode(); node; node = text.nextNode()) {
                 const label = node.parentElement;
                 if (!label || label.closest('script, style, template, [' + hiddenAd + ']')) continue;
                 if (/^remove\s+ad$/i.test(label.textContent.trim())) collapseSlot(label);
                 else if (/\b(?:click|allow|robot)\b/i.test(node.nodeValue)) hidePrompt(label, checked);
+                if (adBrand.test(node.nodeValue) || notificationTime.test(node.nodeValue)) {
+                    hideNotification(label, checkedNotifications);
+                }
             }
         }
 
@@ -174,7 +225,7 @@ function (operation, expectedUrl, anchor) {
         });
         observer.observe(document.documentElement, {
             childList: true, subtree: true, characterData: true, attributes: true,
-            attributeFilter: ['style', 'class', 'hidden']
+            attributeFilter: ['style', 'class', 'hidden', 'src', 'href', 'rel']
         });
         style.panelverseObserver = observer;
     }
