@@ -12,7 +12,20 @@ Open this link on a phone or tablet running **Android 7 or newer**. [Download Pa
 
 ## iPhone and iPad
 
-PanelVerse currently ships for Android. An iPhone or iPad download requires a separate iOS build. An iOS beta can be distributed through TestFlight once a build is available. [Apple TestFlight](https://developer.apple.com/testflight/)
+The iOS project targets **iOS and iPadOS 17 or newer**. It includes the PanelVerse catalog, search, Favorites and reading lists stored on the device, an online reader with zoom, and offline CBZ import.
+
+To run it from source on a Mac:
+
+1. Open `ios/PanelVerse.xcodeproj` in Xcode and let it resolve ZIPFoundation.
+2. Select the **PanelVerse** scheme and an iPhone or iPad simulator, then press **Run**.
+3. For a physical device, connect it and choose your Apple development team in **Signing & Capabilities**. Select the device as the run destination and press **Run**. Change the bundle identifier if your team needs a unique one.
+
+### Build from Windows with Codemagic
+
+1. Connect the PanelVerse GitHub repository in Codemagic and select the branch with `codemagic.yaml`.
+2. Run **PanelVerse iOS simulator** to compile the app and launch it on a hosted iPhone simulator. The build provides a screenshot and simulator app under **Artifacts**. [Codemagic iOS build guide](https://docs.codemagic.io/yaml-quick-start/building-a-native-ios-app/)
+3. To install on an iPhone through TestFlight, use an Apple Developer Program membership and create the app in App Store Connect with bundle ID `com.hazemserry.panelverse`. In Codemagic, add an App Store Connect integration named **PanelVerse App Store Connect** and generate or import an Apple Distribution certificate and App Store provisioning profile for that bundle ID. [Codemagic signing guide](https://docs.codemagic.io/yaml-code-signing/signing-ios/)
+4. Run **PanelVerse iOS TestFlight**. When Apple finishes processing the upload, add testers from the **TestFlight** tab in App Store Connect. Testers install using the TestFlight invitation. [Apple TestFlight](https://developer.apple.com/testflight/)
 
 ## Try PanelVerse
 
