@@ -73,6 +73,65 @@ enum ComicArchive {
         return UIImage(cgImage: thumbnail)
     }
 
+    static func download(_ chapter: DownloadChapter, pages: [URL],
+                         progress: @MainActor @Sendable (Int) -> Void) async throws -> OfflineBook {
+        guard (1...1000).contains(pages.count), pages.allSatisfy(chapter.allowsImage) else {
+            throw ChapterDownloadError.pagesUnavailable
+        }
+        let id = UUID()
+        let folder = try storage()
+        let staging = folder.appendingPathComponent(id.uuidString + ".partial", isDirectory: true)
+        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: staging) }
+        let file = staging.appendingPathComponent("book.cbz")
+        let pageFile = staging.appendingPathComponent("page")
+        let archive = try Archive(url: file, accessMode: .create)
+        let config = URLSessionConfiguration.ephemeral
+        config.httpShouldSetCookies = false
+        config.urlCredentialStorage = nil
+        config.timeoutIntervalForRequest = 20
+        config.timeoutIntervalForResource = 60
+        let session = URLSession(configuration: config, delegate: NoDownloadRedirects(), delegateQueue: nil)
+        defer { session.invalidateAndCancel() }
+        var downloaded = 0
+        for (index, url) in pages.enumerated() {
+            try Task.checkCancellation()
+            let limit = min(pageLimit, archiveLimit - downloaded)
+            guard limit > 0 else { throw ImportError.tooLarge }
+            var request = URLRequest(url: url)
+            request.setValue("image/jpeg,image/png,image/webp,application/octet-stream", forHTTPHeaderField: "Accept")
+            request.setValue(chapter.address.absoluteString, forHTTPHeaderField: "Referer")
+            let (bytes, response) = try await session.bytes(for: request)
+            guard let response = response as? HTTPURLResponse, response.statusCode == 200,
+                  let finalURL = response.url, chapter.allowsImage(finalURL) else {
+                throw ChapterDownloadError.providerResponse
+            }
+            guard response.expectedContentLength <= Int64(limit) else { throw ImportError.tooLarge }
+            var data = Data()
+            for try await byte in bytes {
+                guard data.count < limit else { throw ImportError.tooLarge }
+                data.append(byte)
+            }
+            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let type = CGImageSourceGetType(source),
+                  let ext = ["jpg", "png", "webp"].first(where: { imageTypes[$0] == (type as String) }),
+                  CGImageSourceGetStatus(source) == .statusComplete else { throw ChapterDownloadError.invalidPage }
+            try validateDimensions(source)
+            try data.write(to: pageFile)
+            let name = String(format: "%04d", index + 1) + "." + ext
+            try archive.addEntry(with: name, fileURL: pageFile)
+            let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
+            guard let size = attributes[.size] as? NSNumber,
+                  size.int64Value <= Int64(archiveLimit) else { throw ImportError.tooLarge }
+            downloaded += data.count
+            await progress((index + 1) * 99 / pages.count)
+        }
+        try Task.checkCancellation()
+        let book = OfflineBook(id: id, title: chapter.title, pageCount: pages.count, source: chapter.address)
+        try FileManager.default.moveItem(at: file, to: bookURL(book))
+        return book
+    }
+
     static func remove(_ book: OfflineBook) throws {
         let url = try bookURL(book)
         if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
@@ -133,12 +192,23 @@ enum ComicArchive {
         let ext = (page.path as NSString).pathExtension.lowercased()
         guard UInt64(data.count) == page.uncompressedSize, checksum == page.checksum,
               let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let type = CGImageSourceGetType(source), imageTypes[ext] == (type as String),
-              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any],
+              let type = CGImageSourceGetType(source), imageTypes[ext] == (type as String) else { throw ImportError.invalid }
+        try validateDimensions(source)
+        return source
+    }
+
+    private static func validateDimensions(_ source: CGImageSource) throws {
+        guard let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any],
               let width = properties[kCGImagePropertyPixelWidth as String] as? Int,
               let height = properties[kCGImagePropertyPixelHeight as String] as? Int else { throw ImportError.invalid }
         guard (1...20_000).contains(width), (1...60_000).contains(height),
               width * height <= 128 * 1024 * 1024 else { throw ImportError.tooLarge }
-        return source
+    }
+}
+
+private final class NoDownloadRedirects: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(nil)
     }
 }

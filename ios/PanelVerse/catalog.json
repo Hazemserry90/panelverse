@@ -380,21 +380,18 @@
   {
     "id": "starwars",
     "title": "Star Wars: Darth Vader",
-    "cover": "cover_starwars",
     "address": "https://readcomicsonline.ru/comic/star-wars-darth-vader-2020",
     "category": "Comics"
   },
   {
     "id": "transformers",
     "title": "Transformers",
-    "cover": "cover_transformers",
     "address": "https://readcomicsonline.ru/comic/transformers-2019",
     "category": "Comics"
   },
   {
     "id": "tmnt",
     "title": "Teenage Mutant Ninja Turtles",
-    "cover": "cover_tmnt",
     "address": "https://readcomicsonline.ru/comic/teenage-mutant-ninja-turtles-2011",
     "category": "Comics"
   }

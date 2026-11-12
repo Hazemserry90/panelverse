@@ -6,19 +6,22 @@ struct OnlineReaderScreen: View {
     let series: Series
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var library: LibraryStore
+    @EnvironmentObject private var downloads: ChapterDownloads
     @State private var start: ReadingPosition?
     @State private var ready = false
     @State private var error = false
     @State private var loading = true
     @State private var reload = 0
     @State private var zoom: CGFloat = 1
+    @State private var downloadSource: ReaderDownloadSource?
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Ink.background.ignoresSafeArea()
                 if ready {
-                    ProviderWebView(series: series, initial: start, zoom: zoom, loading: $loading, failed: $error) {
+                    ProviderWebView(series: series, initial: start, zoom: zoom, loading: $loading, failed: $error,
+                                    onDownloadSource: { downloadSource = $0 }) {
                         library.remember(series, address: $0, scroll: $1)
                     }
                     .id(reload)
@@ -40,10 +43,23 @@ struct OnlineReaderScreen: View {
                     ProgressView().padding(16).background(Ink.background).allowsHitTesting(false)
                 }
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) { DownloadStatus() }
             .navigationTitle(series.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
+                ToolbarItem(placement: .primaryAction) {
+                    if let downloadSource {
+                        let saved = library.books.contains { $0.source == downloadSource.chapter.address }
+                        Button {
+                            downloads.start(downloadSource, library: library)
+                        } label: {
+                            Label(saved ? "Available offline" : (series.isManga ? "Download chapter" : "Download issue"),
+                                  systemImage: saved ? "checkmark.circle" : "arrow.down.circle")
+                        }
+                        .disabled(saved || downloads.active != nil)
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
@@ -79,6 +95,7 @@ private struct ProviderWebView: UIViewRepresentable {
     let zoom: CGFloat
     @Binding var loading: Bool
     @Binding var failed: Bool
+    var onDownloadSource: (ReaderDownloadSource?) -> Void
     var save: (URL, Double) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -174,6 +191,7 @@ private struct ProviderWebView: UIViewRepresentable {
             restoration?.cancel()
             restoration = nil
             loadingPage = true
+            parent.onDownloadSource(nil)
             parent.loading = true
             parent.failed = false
         }
@@ -182,6 +200,9 @@ private struct ProviderWebView: UIViewRepresentable {
             parent.loading = false
             loadingPage = false
             page = webView.url
+            if let url = page, let chapter = DownloadChapter(series: parent.series, url: url) {
+                parent.onDownloadSource(ReaderDownloadSource(chapter: chapter, visibleURL: url, view: webView))
+            }
             if let url = page, parent.series.allows(url),
                let file = Bundle.main.url(forResource: "reader-page", withExtension: "js"),
                let script = try? String(contentsOf: file, encoding: .utf8),
@@ -249,6 +270,7 @@ private struct ProviderWebView: UIViewRepresentable {
 
         private func fail() {
             loadingPage = false
+            parent.onDownloadSource(nil)
             parent.loading = false
             parent.failed = true
         }

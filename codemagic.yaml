@@ -44,10 +44,16 @@ workflows:
     max_build_duration: 30
     environment:
       xcode: latest
-    scripts:
+    scripts: &personal_device_scripts
       - name: Build and package an unsigned iPhone app
         script: |
           set -euo pipefail
+          if [ -n "${PANELVERSE_FIREBASE_IOS_PLIST:-}" ]; then
+            printf '%s' "$PANELVERSE_FIREBASE_IOS_PLIST" | /usr/bin/base64 -D > ios/PanelVerse/GoogleService-Info.plist
+          elif [ "${PANELVERSE_REQUIRE_FIREBASE:-0}" = 1 ]; then
+            echo "Set PANELVERSE_FIREBASE_IOS_PLIST in the panelverse_firebase_ios variable group." >&2
+            exit 1
+          fi
           derived_data=build/panelverse-device
           xcodebuild -project ios/PanelVerse.xcodeproj -scheme PanelVerse \
             -configuration Debug -destination 'generic/platform=iOS' \
@@ -58,8 +64,21 @@ workflows:
           mkdir -p "$package_dir/Payload" build/ios/ipa
           ditto "$app" "$package_dir/Payload/PanelVerse.app"
           ditto -c -k --keepParent "$package_dir/Payload" build/ios/ipa/PanelVerse-unsigned.ipa
-    artifacts:
+    artifacts: &personal_device_artifacts
       - build/ios/ipa/PanelVerse-unsigned.ipa
+
+  ios-personal-device-account:
+    name: PanelVerse iOS personal device with accounts
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      xcode: latest
+      groups:
+        - panelverse_firebase_ios
+      vars:
+        PANELVERSE_REQUIRE_FIREBASE: "1"
+    scripts: *personal_device_scripts
+    artifacts: *personal_device_artifacts
 
   ios-testflight:
     name: PanelVerse iOS TestFlight

@@ -24,6 +24,7 @@ build_output*.txt
 
 # ── Firebase config (contains API keys — keep local only) ─────────────────────
 app/google-services.json
+ios/PanelVerse/GoogleService-Info.plist
 
 # ── Misc ──────────────────────────────────────────────────────────────────────
 .DS_Store

@@ -89,6 +89,20 @@ Release builds use your local `keystore.properties`, or an external file selecte
 
 Free personal signing expires after seven days. Use the same Apple Account to refresh the install from Windows. [Apple developer account limits](https://developer.apple.com/help/account/basics/about-your-developer-account)
 
+#### Test iPhone sign-in and sign-up
+
+1. In the Firebase project used by Android, register an iOS app with bundle ID `com.hazemserry.panelverse`. Download its `GoogleService-Info.plist` and confirm **Authentication → Sign-in method → Email/Password** is enabled. [Firebase setup for iOS](https://firebase.google.com/docs/ios/setup)
+2. From the folder where you downloaded the file, run this in PowerShell to copy its Base64 value to your clipboard.
+
+   ```powershell
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path .\GoogleService-Info.plist).Path)) | Set-Clipboard
+   ```
+
+3. In Codemagic, open the PanelVerse app’s **Environment variables**. Create a secret variable named `PANELVERSE_FIREBASE_IOS_PLIST` in the group `panelverse_firebase_ios`, then paste the clipboard value. Run **PanelVerse iOS personal device with accounts**.
+4. Install the resulting IPA with the same sideloading account as before and keep the same app bundle identifier in Sideloadly. Tap the person icon on **Home** to sign in or create an account.
+
+For a local Xcode build, put the same plist in `ios/PanelVerse`. Account sign-in uses Firebase email and password. Favorites, reading lists, and offline downloads are stored on the device.
+
 #### Simulator and TestFlight workflows
 
 1. Connect the PanelVerse GitHub repository in Codemagic and select the branch with `codemagic.yaml`.

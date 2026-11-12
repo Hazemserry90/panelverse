@@ -14,7 +14,9 @@ struct OfflineScreen: View {
             if library.books.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "books.vertical").font(.largeTitle)
-                    Text("Import a CBZ from Files to read offline.").foregroundStyle(.secondary)
+                    Text("Download a chapter or issue from the reader, or import a CBZ from Files.")
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
                     Button("Import CBZ") { picker = true }.buttonStyle(.borderedProminent)
                 }
                 .padding(16)
@@ -41,6 +43,7 @@ struct OfflineScreen: View {
             }
         }
         .background(Ink.background)
+        .safeAreaInset(edge: .top, spacing: 0) { DownloadStatus() }
         .navigationTitle("Offline")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

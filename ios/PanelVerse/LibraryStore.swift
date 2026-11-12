@@ -5,7 +5,7 @@ struct Series: Decodable, Hashable, Identifiable {
     let id: String
     let title: String
     let category: String
-    let cover: String
+    let cover: String?
     let address: URL
 
     var isManga: Bool { category == "Manga" }
@@ -54,10 +54,11 @@ struct ReadingPosition: Codable {
     let updatedAt: Date
 }
 
-struct OfflineBook: Codable, Identifiable, Hashable {
+struct OfflineBook: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     let title: String
     let pageCount: Int
+    var source: URL? = nil
 }
 
 @MainActor

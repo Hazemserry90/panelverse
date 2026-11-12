@@ -5,8 +5,10 @@ import UIKit
 struct CatalogScreen: View {
     var discover = false
     @EnvironmentObject private var library: LibraryStore
+    @EnvironmentObject private var account: AccountStore
     @State private var search = ""
     @State private var category = "All"
+    @State private var showAccount = false
 
     private var results: [Series] {
         Series.catalog.filter { series in
@@ -68,8 +70,9 @@ struct CatalogScreen: View {
                                     Cover(series: series).aspectRatio(2 / 3, contentMode: .fill).clipped()
                                     Text(series.title)
                                         .font(.subheadline.weight(.semibold))
-                                        .lineLimit(2)
-                                        .frame(maxWidth: .infinity, minHeight: 36, alignment: .topLeading)
+                                        .lineLimit(3)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .frame(maxWidth: .infinity, minHeight: 54, alignment: .topLeading)
                                         .padding(.horizontal, 6)
                                 }
                                 .padding(.bottom, 4)
@@ -86,6 +89,16 @@ struct CatalogScreen: View {
         .background(Ink.background)
         .navigationTitle(discover ? "Discover" : "PANELVERSE")
         .searchable(text: $search, prompt: "Search manga & comics")
+        .toolbar {
+            if !discover {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showAccount = true } label: {
+                        Label(account.email == nil ? "Sign in" : "Account", systemImage: "person.crop.circle")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showAccount) { AccountScreen() }
     }
 }
 
@@ -94,15 +107,17 @@ struct Cover: View {
 
     var body: some View {
         GeometryReader { geometry in
-            if let url = Bundle.main.url(forResource: series.cover, withExtension: "webp", subdirectory: "drawable-nodpi"),
+            if let cover = series.cover,
+               let url = Bundle.main.url(forResource: cover, withExtension: "webp", subdirectory: "drawable-nodpi"),
                let image = UIImage(contentsOfFile: url.path) {
                 Image(uiImage: image)
                     .resizable().scaledToFill()
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     .clipped()
             } else {
-                Rectangle().fill(Ink.panel).overlay {
-                    Image(systemName: "book.closed").font(.title).foregroundStyle(.secondary)
+                Rectangle().fill(Ink.paper).overlay {
+                    Rectangle().strokeBorder(Ink.background, lineWidth: 1).padding(5)
+                    Image(systemName: "book.closed").font(.title).foregroundStyle(Ink.background)
                 }
             }
         }
@@ -191,12 +206,12 @@ struct LibraryScreen: View {
 
     var body: some View {
         VStack {
-            Picker("Library list", selection: $shelf) {
-                ForEach(ReadingList.allCases.map(\.rawValue) + ["Favorites"], id: \.self) { name in
-                    Text(name).tag(name)
+            ViewThatFits(in: .horizontal) {
+                shelfButtons
+                ScrollView(.horizontal, showsIndicators: false) {
+                    shelfButtons
                 }
             }
-            .pickerStyle(.segmented)
             .padding(.horizontal, 12)
             if titles.isEmpty {
                 Spacer()
@@ -226,5 +241,25 @@ struct LibraryScreen: View {
         }
         .background(Ink.background)
         .navigationTitle("Library")
+    }
+
+    private var shelfButtons: some View {
+        HStack(spacing: 4) {
+            ForEach(ReadingList.allCases.map(\.rawValue) + ["Favorites"], id: \.self) { name in
+                Button {
+                    shelf = name
+                } label: {
+                    Text(name)
+                        .font(.subheadline.weight(.semibold))
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: 44)
+                        .foregroundStyle(shelf == name ? Ink.background : Ink.paper)
+                        .background(shelf == name ? Ink.paper : Ink.panel)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(shelf == name ? .isSelected : [])
+            }
+        }
     }
 }
