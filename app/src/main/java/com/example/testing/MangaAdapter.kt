@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
@@ -33,6 +34,9 @@ class MangaAdapter(
 
     /** Called after every filter pass with the number of visible items. */
     var onFilterResult: ((Int) -> Unit)? = null
+    var onItemLongClick: ((MangaItem) -> Unit)? = null
+    var onListCommitted: (() -> Unit)? = null
+    var readingProgress = emptyMap<String, ReadingHistoryManager.Progress>()
 
     init {
         submitList(computeFiltered())
@@ -41,10 +45,13 @@ class MangaAdapter(
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val coverImage: ImageView = itemView.findViewById(R.id.mangaCover)
         val titleText: TextView = itemView.findViewById(R.id.mangaTitle)
-        val categoryChip: TextView = itemView.findViewById(R.id.mangaCategory)
-        val favoriteBtn: TextView = itemView.findViewById(R.id.mangaFavorite)
+        val categoryChip: TextView? = itemView.findViewById(R.id.mangaCategory)
+        val favoriteBtn: View = itemView.findViewById(R.id.mangaFavorite)
+        val favoriteGlyph: TextView = itemView.findViewById<TextView>(R.id.mangaFavoriteGlyph)
+            ?: itemView.findViewById(R.id.mangaFavorite)
         val cardClickArea: View = itemView.findViewById(R.id.cardClickArea)
         val spineAccent: View = itemView.findViewById(R.id.spineAccent)
+        val progressBar: ProgressBar? = itemView.findViewById(R.id.mangaReadingProgress)
     }
 
     /** When true, inflates the two-column grid card (tablets / foldables). */
@@ -71,10 +78,23 @@ class MangaAdapter(
             holder.coverImage.setImageResource(item.coverResId)
         }
         holder.titleText.text = item.title
-        holder.categoryChip.text = item.category
-        if (!useGrid) applyChipStyle(holder.categoryChip, item.category)
+        holder.progressBar?.apply {
+            val saved = readingProgress[item.id]
+            val count = saved?.pageCount
+            val page = saved?.page
+            visibility = if (count != null && page != null) View.VISIBLE else View.GONE
+            if (count != null && page != null) {
+                max = count
+                progress = page + 1
+                contentDescription = context.getString(R.string.pv_native_page_count, page + 1, count)
+            }
+        }
+        holder.categoryChip?.let { chip ->
+            chip.text = item.category
+            applyChipStyle(chip, item.category)
+        }
         if (!useGrid) applySpineStyle(holder.spineAccent, item.category)
-        holder.favoriteBtn.text = if (item.isFavorite) "★" else "☆"
+        holder.favoriteGlyph.text = if (item.isFavorite) "★" else "☆"
 
         // FIX 4: use NO_POSITION (correct constant) and getItem(pos).
         holder.favoriteBtn.setOnClickListener {
@@ -88,24 +108,33 @@ class MangaAdapter(
             if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
             SeriesActivity.open(context, getItem(pos))
         }
+        holder.cardClickArea.setOnLongClickListener {
+            val pos = holder.bindingAdapterPosition
+            val action = onItemLongClick
+            if (pos == RecyclerView.NO_POSITION || action == null) false
+            else {
+                action(getItem(pos))
+                true
+            }
+        }
+        holder.cardClickArea.isLongClickable = onItemLongClick != null
     }
 
     private fun toggleFavorite(holder: ViewHolder, item: MangaItem) {
         val user = FirebaseAuth.getInstance().currentUser
         if (user == null) {
-            ComicBubble.show(context, "Sign in to save favourites \uD83D\uDD12")
+            ComicBubble.show(context, context.getString(R.string.pv_favourite_sign_in))
             return
         }
         val newFav = !item.isFavorite
         // Optimistic UI update via an immutable copy + resubmit.
         setFavorite(item.id, newFav)
-        burst(holder.favoriteBtn)
+        burst(holder.favoriteGlyph)
 
-        val ref = FirebaseHelper.ref("users/${user.uid}/favorites/${item.id}")
-
-        val task = if (newFav) ref.setValue(true) else ref.removeValue()
+        val task = SavedLists.setSaved(user.uid, item.id, newFav)
         task.addOnSuccessListener {
-            ComicBubble.show(context, if (newFav) "Added to Saved! \uD83D\uDD25" else "Removed from Saved")
+            val message = if (newFav) R.string.pv_favourite_added else R.string.pv_favourite_removed
+            ComicBubble.show(context, context.getString(message))
         }.addOnFailureListener {
             // Rollback via resubmit (not notifyDataSetChanged).
             setFavorite(item.id, !newFav)
@@ -159,7 +188,7 @@ class MangaAdapter(
 
     private fun applyFilters() {
         val filtered = computeFiltered()
-        submitList(filtered)
+        submitList(filtered, onListCommitted?.let { Runnable { onListCommitted?.invoke() } })
         onFilterResult?.invoke(filtered.size)
     }
 

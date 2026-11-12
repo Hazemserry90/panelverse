@@ -25,6 +25,7 @@ class HomeFragment : Fragment() {
     private var favListener: ValueEventListener? = null
     private var emptyView: View? = null
     private var sectionTitle: TextView? = null
+    private var selectedCategoryIndex = 0
     private var fabTop: View? = null
 
     companion object {
@@ -125,14 +126,10 @@ class HomeFragment : Fragment() {
                 ),
                 MangaItem(
                     "bleachtybw", "Bleach: Thousand-Year Blood War", R.drawable.cover_bleachtybw,
-                    url = "https://mangakatana.com/manga/bleach.47", category = "Manga"
+                    url = "https://mangakatana.com/manga/bleach.47/c480", category = "Manga"
                 ),
 
                 // ── Marvel ────────────────────────────────────────────────────
-                MangaItem(
-                    "xmen", "X-Men: Blue", R.drawable.cover_xmen,
-                    url = "https://readcomicsonline.ru/comic/x-men-blue", category = "Marvel"
-                ),
                 MangaItem(
                     "venom", "Venom (2018)", R.drawable.cover_venom,
                     url = "https://readcomicsonline.ru/comic/venom-2018", category = "Marvel"
@@ -295,9 +292,6 @@ class HomeFragment : Fragment() {
         setupSearchView(view)
         setupCategoryChips(view)
         view.findViewById<View>(R.id.btnHomeOffline).setOnClickListener { OfflineActivity.open(requireContext()) }
-        view.findViewById<View>(R.id.btnHomeProfile).setOnClickListener {
-            (parentFragment as? NavbarFragment)?.switchToTab(R.id.profile)
-        }
         bindHomeFeature(view)
         setupComicButtons(view)
         // BUG 9 FIX: Listener is attached in onStart and detached in onStop so it
@@ -310,8 +304,11 @@ class HomeFragment : Fragment() {
     }
 
     private fun bindHomeFeature(root: View) {
-        val lastTitle = ReadingHistoryManager.getHistory(requireContext()).firstOrNull()
-        val recent = catalogue.firstOrNull { it.title == lastTitle }
+        val last = ReadingHistoryManager.latestEntry(requireContext())
+        val recent = last?.let { entry ->
+            if (entry.seriesId != null) catalogue.firstOrNull { it.id == entry.seriesId }
+            else catalogue.singleOrNull { it.title == entry.title }
+        }
         val series = recent ?: catalogue.firstOrNull() ?: return
         root.findViewById<android.widget.ImageView>(R.id.homeFeatureCover).setImageResource(series.coverResId)
         root.findViewById<TextView>(R.id.homeFeatureTitle).text = series.title
@@ -319,10 +316,12 @@ class HomeFragment : Fragment() {
             if (recent == null) R.string.pv_ink_first else R.string.pv_ink_recent
         )
         root.findViewById<TextView>(R.id.homeFeatureAction).apply {
-            val canResume = recent != null && ReadingHistoryManager.getProgress(requireContext(), series.id) != null
+            val progress = ReadingHistoryManager.getProgress(requireContext(), series.id)
+            val canResume = recent != null && progress != null &&
+                (series.id != "bleachtybw" || ProviderChapters.chapterUrl(series, progress.url) != null)
             setText(if (canResume) R.string.pv_ink_resume else R.string.pv_ink_open)
             setOnClickListener {
-                if (canResume) ReaderActivity.open(requireContext(), series)
+                if (canResume) SeriesActivity.resume(requireContext(), series)
                 else openSeries(series)
             }
         }
@@ -367,7 +366,7 @@ class HomeFragment : Fragment() {
     /** Updates the section count and the comic empty-state bubble. */
     private fun updateResultUi(count: Int) {
         emptyView?.visibility = if (count == 0) View.VISIBLE else View.GONE
-        sectionTitle?.text = getString(R.string.pv_ink_browse, count)
+        sectionTitle?.text = resources.getQuantityString(R.plurals.pv_home_title_count, count, count)
     }
 
     private fun setupSearchView(view: View) {
@@ -375,14 +374,21 @@ class HomeFragment : Fragment() {
         searchEdit.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                view.findViewById<View>(R.id.homeFeature).visibility = if (s.isNullOrBlank()) View.VISIBLE else View.GONE
+                updateFeatureVisibility(view)
                 adapter?.filterByQuery(s?.toString())
             }
             override fun afterTextChanged(s: Editable?) {}
         })
     }
 
+    private fun updateFeatureVisibility(root: View) {
+        val query = root.findViewById<EditText>(R.id.mangaSearchEditText).text
+        root.findViewById<View>(R.id.homeFeature).visibility =
+            if (selectedCategoryIndex == 0 && query.isNullOrBlank()) View.VISIBLE else View.GONE
+    }
+
     private fun setupCategoryChips(view: View) {
+        selectedCategoryIndex = 0
         val chipGroup = view.findViewById<LinearLayout>(R.id.categoryChipGroup) ?: return
         val chips = arrayOfNulls<TextView>(CATEGORIES.size)
         CATEGORIES.forEachIndexed { i, category ->
@@ -393,9 +399,9 @@ class HomeFragment : Fragment() {
                 gravity = android.view.Gravity.CENTER
                 isSelected = i == 0
                 setPadding(dp(14), dp(6), dp(14), dp(6))
-                setBackgroundResource(if (i == 0) R.drawable.bg_chip_selected else R.drawable.bg_chip_unselected)
+                setBackgroundResource(if (i == 0) R.drawable.bg_ink_caption else R.drawable.bg_chip_unselected)
                 setTextColor(ContextCompat.getColor(requireContext(),
-                    if (i == 0) R.color.white else R.color.text_secondary))
+                    if (i == 0) R.color.black else R.color.text_secondary))
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
@@ -409,8 +415,10 @@ class HomeFragment : Fragment() {
                     c?.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
                 }
                 chip.isSelected = true
-                chip.setBackgroundResource(R.drawable.bg_chip_selected)
-                chip.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
+                chip.setBackgroundResource(R.drawable.bg_ink_caption)
+                chip.setTextColor(ContextCompat.getColor(requireContext(), R.color.black))
+                selectedCategoryIndex = i
+                updateFeatureVisibility(view)
                 adapter?.filterByCategory(category)
             }
             chipGroup.addView(chip)

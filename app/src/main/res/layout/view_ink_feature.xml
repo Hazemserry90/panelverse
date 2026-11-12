@@ -5,8 +5,8 @@
     android:layout_height="wrap_content"
     android:layout_marginStart="16dp"
     android:layout_marginEnd="16dp"
-    android:layout_marginTop="8dp"
-    android:layout_marginBottom="16dp"
+    android:layout_marginTop="12dp"
+    android:layout_marginBottom="4dp"
     android:background="@drawable/bg_ink_panel"
     android:gravity="center_vertical"
     android:orientation="horizontal"
@@ -14,8 +14,8 @@
 
     <ImageView
         android:id="@+id/homeFeatureCover"
-        android:layout_width="72dp"
-        android:layout_height="108dp"
+        android:layout_width="84dp"
+        android:layout_height="126dp"
         android:importantForAccessibility="no"
         android:scaleType="centerCrop" />
 

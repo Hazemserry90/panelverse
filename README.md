@@ -1,112 +1,72 @@
 # PanelVerse
 
-**PanelVerse** is an Android app for reading **manga** and **comics** (Marvel, DC and more) in one place — with a modern ink-inspired UI, a built-in reader, cloud-synced favourites and an offline **AI recommendation assistant**.
+PanelVerse is an Android app for browsing manga and comics, keeping a reading list, and picking up where you left off. The **Ink & Screentone** interface brings together a searchable cover grid, series details, an in-app web reader, and an offline library for your own files.
 
-> Formerly named *MangaVerse*.
+## Download and install on Android
 
----
+Open this link on a phone or tablet running **Android 7 or newer**. [Download PanelVerse for Android](https://github.com/Hazemserry90/panelverse/releases/latest)
 
-## ✨ Features
+1. On the release page, tap **Assets** and choose the PanelVerse file ending in **.apk**. That’s the Android installer.
+2. When the download finishes, tap the file in your notifications or find it under **Files → Downloads**.
+3. If Android asks for permission to install from your browser or Files app, tap **Settings** and turn on **Allow from this source** for that app. Go back and tap **Install**, then **Open**. You can turn the permission off after installing. [Android installation help](https://support.google.com/pixelphone/answer/7391672)
 
-- **Big, categorised library** — Manga, Marvel, DC, Invincible and Comics, all in a searchable list.
-- **Search & filter** — live search plus category chips.
-- **Built-in reader** — open any title and read it inside the app.
-- **Favourites** — saved to your account and synced across devices (Firebase Auth + Realtime Database).
-- **AI Assistant** (new tab)
-  - Pick interest chips (Superheroes, Action, Dark & Gritty, Horror, Sports, …) or type what you're in the mood for.
-  - Get instant recommendations from the catalogue.
-  - **Learns from your reading:** suggests titles *similar to the last thing you read*.
-  - Runs fully offline — no API key, no cost.
-- **Reading history** — remembers what you opened.
-- **Notifications** — periodic "pick up where you left off" reminders (WorkManager).
-- **Light / dark theme** — cream "paper" and deep ink "night" palettes.
-- **Unique cover art** — every title ships with its own cover, bundled for offline use.
+## iPhone and iPad
 
----
+PanelVerse currently ships for Android. An iPhone or iPad download requires a separate iOS build. An iOS beta can be distributed through TestFlight once a build is available. [Apple TestFlight](https://developer.apple.com/testflight/)
 
-## 🧱 Tech stack
+## Try PanelVerse
 
-| Area | Used |
-|---|---|
-| Language | Kotlin |
-| UI | AndroidX, Material 3, View/XML layouts, RecyclerView |
-| Images | Coil |
-| Auth / data | Firebase Authentication, Firebase Realtime Database |
-| Background | WorkManager |
-| GIF | android-gif-drawable |
-| Build | Gradle (Kotlin DSL), Android Gradle Plugin 8.7.0, Gradle 8.9 |
-| SDK | `minSdk 24`, `compileSdk`/`targetSdk 34` |
-| Package | `com.example.testing` |
+1. Tap **Create account**, confirm your email using the link in your inbox, then return to PanelVerse and tap **Login**.
+2. Search for a title like **Dragon Ball**, open its series page, and tap **Start reading**.
+3. Tap the star on a title to find it later in **Library → Favorites**, or tap **Want to Read** on the series page to add it to that list.
+4. To try reading without internet, tap **Download** next to a supported chapter or issue. Wait for the download to finish, then open it from **Offline**.
 
----
+## Features
 
-## 📂 Project structure
+- **Home and Discover** — Browse Manga, Marvel, DC, Invincible, and Comics. Search by title or find recommendations based on your interests and reading history.
+- **Series and Library** — Browse manga chapters and comic issues, share a series link, and manage Favorites separately from Reading, Want to Read, and Finished. Use **Want to Read** on a series page or long-press a title in your Library to move it between reading lists.
+- **Reader** — Open supported chapters in the native reader with page controls, a scrubber, and right-to-left, left-to-right, or vertical reading. Pinch or double-tap to zoom, then drag to move around the page. You can also use **Reader options → Zoom in** or **Zoom out**. The web reader remains available from the series and reader controls when a provider chapter needs it.
+- **Ad filtering** — Use **Reader options → Block ads** to block known ad hosts and hide supported overlays. Provider ads can change, so some may still appear.
+- **Offline library** — Download supported chapters or import a local CBZ with JPG, PNG, or WebP pages. PanelVerse keeps the files on the device and remembers your page.
+- **Appearance and reminders** — Switch between paper and ink themes and control local reading reminders in Settings.
 
-```
-app/src/main/
-├── java/com/example/testing/
-│   ├── MainActivity.kt            # hosts the nav graph
-│   ├── splashscreen.kt            # splash
-│   ├── NavbarFragment.kt          # bottom-nav tab host (Home / AI / Saved / Profile / Settings)
-│   ├── HomeFragment.kt            # catalogue + search + category chips
-│   ├── AssistantFragment.kt       # offline AI recommender (+ reading-history suggestions)
-│   ├── FavoritesFragment.kt       # cloud-synced favourites
-│   ├── ProfileFragment.kt / SettingsFragment.kt
-│   ├── StartFragment.kt / GameFragment.kt / EndgameFragment.kt  # auth screens
-│   ├── ReaderActivity.kt          # in-app reader
-│   ├── MangaItem.kt / MangaAdapter.kt
-│   ├── ReadingHistoryManager.kt   # local reading history
-│   └── NotificationWorker.kt      # periodic reminders
-└── res/                           # layouts, drawables (covers), themes, menu
-```
+## Read offline
 
----
+For a supported chapter or issue, open its series and tap **Download** next to the entry. The button shows download progress. Open the finished download from **Offline**. Provider availability and supported page formats determine whether a download succeeds.
 
-## 🚀 Building
+Tap **Cancel download** on a queued or active download. To remove a finished download, open **Offline**, then touch and hold the title.
 
-### Requirements
-- **Android Studio** (or the Android command-line tools)
-- **JDK 17+**
-- Android **SDK Platform 34** and **Build-Tools 34.0.0**
+If a comic’s issue list is unavailable in the app, tap **Browse issues to download**, open an issue, then choose **Reader options → Download issue**.
 
-### Steps
-1. Clone the repo:
-   ```bash
+You can also put a CBZ you’re allowed to use on your phone and select it under **Offline → Import CBZ**. The offline library supports archives up to 250 MB.
+
+## Build from source
+
+You’ll need Android Studio or the Android command-line tools, JDK 17 or 21, Android SDK Platform 34, and Build-Tools 34.0.0. The project uses Kotlin, AndroidX, Material 3, Gradle 8.9, and Firebase.
+
+1. Clone the repo.
+
+   ~~~sh
    git clone https://github.com/Hazemserry90/panelverse.git
    cd panelverse
-   ```
-2. Create **`local.properties`** in the project root with your SDK path:
-   ```properties
-   sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
-   ```
-3. Add your Firebase config file at **`app/google-services.json`** (Firebase console → Project settings → Android app `com.example.testing`).
-4. Build:
-   ```bash
-   ./gradlew assembleDebug
-   ```
-   The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+   ~~~
 
-> `local.properties` and `app/google-services.json` are **git-ignored** (they contain machine-specific paths and API keys), so you must supply your own.
+2. Open the project in Android Studio so it can configure the SDK, or set the `ANDROID_HOME` environment variable to your SDK folder.
+3. In your Firebase project, register the Android application ID `com.example.testing`, enable Email/Password sign-in, and configure Realtime Database rules that restrict users to their own records. Put the downloaded Firebase client config in `app/google-services.json`. Point `FirebaseHelper.kt` at your own Realtime Database instance when building against a different project.
+4. Build a debug APK.
 
----
+   ~~~powershell
+   .\gradlew.bat :app:assembleDebug
+   ~~~
 
-## 📚 Content sources
+   On macOS or Linux, run `./gradlew :app:assembleDebug`. The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
-PanelVerse is a reader/catalogue front-end. All manga and comic content is streamed from third-party sites:
+Release builds use your local `keystore.properties`, or an external file selected by `PANELVERSE_RELEASE_SIGNING_PROPERTIES`. Run `:app:assembleRelease` to build the release variant. Keep keystores, signing passwords, machine configuration, and Firebase client configuration out of version control.
 
-- **Comics:** readcomicsonline.ru
-- **Manga:** mangakatana.com
+## Content and security
 
-Cover images belong to their respective publishers/owners and are used here for identification only.
+The online reader opens supported chapters from MangaKatana and Read Comics Online. Availability, chapter layout, and advertising can vary by provider. Cover art belongs to its respective rights holders.
 
----
+For reporting security issues, see [SECURITY.md](SECURITY.md).
 
-## 🔒 Security
-
-Security-hardening measures and responsible-disclosure instructions are documented in [SECURITY.md](SECURITY.md). Short version: no secrets are committed, the Firebase database requires authentication, the in-app WebView only loads `http`/`https` (file access off, no JS bridge), external components are not exported, and cleartext traffic is disabled.
-
----
-
-## 👤 Author
-
-**Hazem Serry** — [@Hazemserry90](https://github.com/Hazemserry90)
+Maintained by [Hazem Serry](https://github.com/Hazemserry90).

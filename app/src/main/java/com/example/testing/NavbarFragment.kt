@@ -19,6 +19,7 @@ class NavbarFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val bottomNav = view.findViewById<BottomNavigationView>(R.id.nav_comp_bar)
+        bottomNav.isItemActiveIndicatorEnabled = false
 
         if (savedInstanceState == null) {
             // Cold start: create the home fragment fresh and show it.

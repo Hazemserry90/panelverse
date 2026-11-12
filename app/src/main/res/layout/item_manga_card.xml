@@ -82,6 +82,15 @@
                     android:ellipsize="end"
                     android:lineSpacingMultiplier="1.12" />
 
+                <ProgressBar
+                    android:id="@+id/mangaReadingProgress"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:layout_marginTop="8dp"
+                    android:progressTint="@color/accent_ink"
+                    android:visibility="gone" />
+
                 <TextView
                     android:id="@+id/mangaCategory"
                     android:layout_width="wrap_content"
