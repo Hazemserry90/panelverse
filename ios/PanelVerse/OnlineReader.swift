@@ -14,6 +14,7 @@ struct OnlineReaderScreen: View {
     @State private var ready = false
     @State private var error = false
     @State private var errorMessage = "This page couldn’t load."
+    @State private var verificationAddress: URL?
     @State private var loading = true
     @State private var reload = 0
     @State private var zoom: CGFloat = 1
@@ -34,7 +35,8 @@ struct OnlineReaderScreen: View {
                 if ready {
                     ProviderWebView(series: series, entryAddress: entryAddress, initial: start, zoom: zoom, loading: $loading, failed: $error,
                                     onDownloadSource: { downloadSource = $0 },
-                                    onError: { errorMessage = $0 }) {
+                                    onError: { errorMessage = $0 },
+                                    onVerification: { verificationAddress = $0 }) {
                         library.remember(series, address: $0, scroll: $1)
                     }
                     .id(reload)
@@ -46,20 +48,33 @@ struct OnlineReaderScreen: View {
                         Button("Retry") {
                             error = false
                             loading = true
+                            verificationAddress = nil
                             start = savedPosition
                             reload += 1
                         }
                         .buttonStyle(.borderedProminent)
+                        if series.provider == "readcomicsonline.ru" {
+                            ProviderBrowserLink(series: series, address: start?.address ?? entryAddress)
+                        }
                     }
                     .padding()
-                } else if loading {
+                } else if loading && verificationAddress == nil {
                     ProgressView().padding(16).background(Ink.background).allowsHitTesting(false)
                 }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 0) {
                     DownloadStatus()
-                    if !loading && !error {
+                    if let address = verificationAddress, !error {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("If verification stays on this screen, open the comic in your browser.")
+                                .font(.subheadline)
+                            ProviderBrowserLink(series: series, address: address)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(Ink.panel)
+                    } else if !loading && !error {
                         downloadControls
                     }
                 }
@@ -117,6 +132,29 @@ struct OnlineReaderScreen: View {
     }
 }
 
+struct ProviderBrowserLink: View {
+    let series: Series
+    let address: URL
+
+    var body: some View {
+        if let destination {
+            Link(destination: destination) {
+                Label("Open in browser", systemImage: "safari")
+            }
+            .buttonStyle(.bordered)
+            .tint(Ink.paper)
+        }
+    }
+
+    private var destination: URL? {
+        guard series.contains(address),
+              var parts = URLComponents(url: address, resolvingAgainstBaseURL: false) else { return nil }
+        parts.query = nil
+        parts.fragment = nil
+        return parts.url
+    }
+}
+
 @MainActor
 private struct ProviderWebView: UIViewRepresentable {
     let series: Series
@@ -127,6 +165,7 @@ private struct ProviderWebView: UIViewRepresentable {
     @Binding var failed: Bool
     var onDownloadSource: (ReaderDownloadSource?) -> Void
     var onError: (String) -> Void
+    var onVerification: (URL?) -> Void
     var save: (URL, Double) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -164,6 +203,7 @@ private struct ProviderWebView: UIViewRepresentable {
         private var saveTask: Task<Void, Never>?
         private var restored = false
         private var loadingPage = true
+        private var isVerificationPage = false
 
         init(_ parent: ProviderWebView) { self.parent = parent }
 
@@ -193,17 +233,24 @@ private struct ProviderWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
                      decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
             if navigationResponse.isForMainFrame,
-               let response = navigationResponse.response as? HTTPURLResponse, response.statusCode >= 400,
-               !ReaderAdFilter.isVerificationResponse(response, provider: parent.series.provider) {
-                fail("The reading source returned HTTP \(response.statusCode).")
-                decisionHandler(.cancel)
-                return
-            }
-            if navigationResponse.isForMainFrame,
                let address = navigationResponse.response.url, !parent.series.contains(address) {
                 fail()
                 decisionHandler(.cancel)
                 return
+            }
+            if navigationResponse.isForMainFrame, let response = navigationResponse.response as? HTTPURLResponse {
+                if ReaderAdFilter.isVerificationResponse(response, provider: parent.series.provider),
+                   let address = response.url {
+                    isVerificationPage = true
+                    parent.onVerification(address)
+                } else if response.statusCode >= 400 {
+                    fail("The reading source returned HTTP \(response.statusCode).")
+                    decisionHandler(.cancel)
+                    return
+                } else {
+                    isVerificationPage = false
+                    parent.onVerification(nil)
+                }
             }
             decisionHandler(.allow)
         }
@@ -221,6 +268,7 @@ private struct ProviderWebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             parent.loading = false
+            guard !isVerificationPage else { return }
             loadingPage = false
             page = webView.url
             if let url = page, let chapter = DownloadChapter(series: parent.series, url: url) {
@@ -279,7 +327,7 @@ private struct ProviderWebView: UIViewRepresentable {
         }
 
         private func saveIfReady() {
-            guard !loadingPage, !parent.failed, restoration == nil, let page, let view,
+            guard !loadingPage, !isVerificationPage, !parent.failed, restoration == nil, let page, let view,
                   parent.series.isChapter(page) else { return }
             parent.save(page, Double(view.scrollView.contentOffset.y))
         }

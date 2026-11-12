@@ -49,7 +49,7 @@ struct DownloadChapter: Identifiable, Sendable {
 }
 
 enum ChapterDownloadError: LocalizedError {
-    case listUnavailable, pagesUnavailable, providerResponse, invalidPage, providerHTTP(Int), interrupted
+    case listUnavailable, pagesUnavailable, providerResponse, invalidPage, providerHTTP(Int), verificationRequired, interrupted
 
     var errorDescription: String? {
         switch self {
@@ -58,6 +58,7 @@ enum ChapterDownloadError: LocalizedError {
         case .providerResponse: return "The provider couldn’t send a page image. Check your connection and try again."
         case .invalidPage: return "A page isn’t a readable JPG, PNG, or WebP image."
         case .providerHTTP(let status): return "The reading source returned HTTP \(status). Try the web reader."
+        case .verificationRequired: return "The comic provider requires browser verification. Use Open in browser to read on the provider’s site."
         case .interrupted: return "The download was interrupted. Start it again from the series."
         }
     }
@@ -255,6 +256,11 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
                 return
             }
             // The visible web reader can present the provider’s verification screen.
+            if ReaderAdFilter.isVerificationResponse(http, provider: series.provider) {
+                navigationError = ChapterDownloadError.verificationRequired
+                decisionHandler(.cancel)
+                return
+            }
             guard (200..<300).contains(http.statusCode) else {
                 navigationError = ChapterDownloadError.providerHTTP(http.statusCode)
                 decisionHandler(.cancel)

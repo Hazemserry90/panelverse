@@ -256,6 +256,9 @@ struct SeriesScreen: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Button("Retry") { retryList += 1 }.buttonStyle(.bordered)
+                if series.provider == "readcomicsonline.ru" {
+                    ProviderBrowserLink(series: series, address: series.chapterListAddress)
+                }
             }
             if !entries.isEmpty {
                 if account.userID == nil {

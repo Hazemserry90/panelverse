@@ -168,9 +168,12 @@ struct NativeReaderScreen: View {
                             else { pageRetry += 1 }
                         }
                         .buttonStyle(ReaderPillButtonStyle())
-                        if book == nil, series != nil {
+                        if book == nil, let series {
                             Button("Open in web reader") { showWeb = true }
                                 .buttonStyle(.bordered)
+                            if series.provider == "readcomicsonline.ru", let chapter {
+                                ProviderBrowserLink(series: series, address: chapter.address)
+                            }
                         }
                     }
                     .padding()
