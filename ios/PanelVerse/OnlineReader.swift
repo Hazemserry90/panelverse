@@ -46,8 +46,16 @@ struct OnlineReaderScreen: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Button("Zoom in", systemImage: "plus.magnifyingglass") { zoom = min(zoom * 1.25, 3) }
-                        Button("Zoom out", systemImage: "minus.magnifyingglass") { zoom = max(zoom / 1.25, 1) }
+                        Button {
+                            zoom = min(zoom * 1.25, 3)
+                        } label: {
+                            Label("Zoom in", systemImage: "plus.magnifyingglass")
+                        }
+                        Button {
+                            zoom = max(zoom / 1.25, 1)
+                        } label: {
+                            Label("Zoom out", systemImage: "minus.magnifyingglass")
+                        }
                         Button("Reset zoom") { zoom = 1 }
                     } label: {
                         Label("Reader options", systemImage: "ellipsis.circle")

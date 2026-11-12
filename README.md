@@ -13,7 +13,7 @@ For other versions, see [GitHub Releases](https://github.com/Hazemserry90/panelv
 
 ## iPhone and iPad
 
-**iPhone and iPad testing is pending.** The invitation link will appear here when the beta opens. You’ll need **iOS 17 or iPadOS 17 or newer**.
+**iPhone and iPad testing is pending.** The invitation link will appear here when the beta opens. You’ll need **iOS 16 or iPadOS 16 or newer**.
 
 When you have an invitation:
 

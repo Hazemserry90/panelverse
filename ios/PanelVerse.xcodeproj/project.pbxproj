@@ -69,8 +69,8 @@
 		00000000000000000000000D = {isa = XCSwiftPackageProductDependency; package = 00000000000000000000000C; productName = ZIPFoundation; };
 		00000000000000000000000A = {isa = XCConfigurationList; buildConfigurations = (000000000000000000000015, 000000000000000000000016); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		00000000000000000000000B = {isa = XCConfigurationList; buildConfigurations = (000000000000000000000017, 000000000000000000000018); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		000000000000000000000015 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; }; name = Debug; };
-		000000000000000000000016 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_COMPILATION_MODE = wholemodule; }; name = Release; };
+		000000000000000000000015 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 16.0; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; }; name = Debug; };
+		000000000000000000000016 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 16.0; SWIFT_COMPILATION_MODE = wholemodule; }; name = Release; };
 		000000000000000000000017 = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
