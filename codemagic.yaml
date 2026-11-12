@@ -1,0 +1,65 @@
+workflows:
+  ios-simulator:
+    name: PanelVerse iOS simulator
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      xcode: latest
+    scripts:
+      - name: Build for the iOS simulator
+        script: |
+          set -euo pipefail
+          xcodebuild -project ios/PanelVerse.xcodeproj -scheme PanelVerse \
+            -configuration Debug -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/panelverse-simulator CODE_SIGNING_ALLOWED=NO build
+      - name: Launch PanelVerse on an iPhone simulator
+        script: |
+          set -euo pipefail
+          simulator_id="$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          def version(runtime):
+              return tuple(int(part) for part in runtime.split(".iOS-", 1)[1].split("-"))
+          runtimes = sorted((key for key in devices if ".iOS-" in key), key=version, reverse=True)
+          for runtime in runtimes:
+              for device in devices[runtime]:
+                  if device["name"].startswith("iPhone"):
+                      print(device["udid"])
+                      sys.exit(0)
+          sys.exit("No iPhone simulator is available on this runner.")
+          ')"
+          xcrun simctl bootstatus "$simulator_id" -b
+          app=build/panelverse-simulator/Build/Products/Debug-iphonesimulator/PanelVerse.app
+          xcrun simctl install "$simulator_id" "$app"
+          xcrun simctl launch "$simulator_id" com.hazemserry.panelverse
+          sleep 2
+          xcrun simctl io "$simulator_id" screenshot build/panelverse-simulator.png
+    artifacts:
+      - build/panelverse-simulator/Build/Products/Debug-iphonesimulator/PanelVerse.app
+      - build/panelverse-simulator.png
+
+  ios-testflight:
+    name: PanelVerse iOS TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 35
+    integrations:
+      app_store_connect: PanelVerse App Store Connect
+    environment:
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.hazemserry.panelverse
+    scripts:
+      - name: Apply App Store provisioning
+        script: xcode-project use-profiles --project ios/PanelVerse.xcodeproj
+      - name: Build signed iOS app
+        script: |
+          set -euo pipefail
+          xcode-project build-ipa --project ios/PanelVerse.xcodeproj --scheme PanelVerse \
+            --archive-xcargs "CURRENT_PROJECT_VERSION=$PROJECT_BUILD_NUMBER"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration

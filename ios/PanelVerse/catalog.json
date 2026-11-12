@@ -1,0 +1,401 @@
+[
+  {
+    "id": "dragonball",
+    "title": "Dragon Ball",
+    "cover": "dragonball_cover",
+    "address": "https://mangakatana.com/manga/dragon-ball.3338",
+    "category": "Manga"
+  },
+  {
+    "id": "naruto",
+    "title": "Naruto",
+    "cover": "naruto_cover",
+    "address": "https://mangakatana.com/manga/naruto.1205",
+    "category": "Manga"
+  },
+  {
+    "id": "bleach",
+    "title": "Bleach",
+    "cover": "bleach_cover",
+    "address": "https://mangakatana.com/manga/bleach.47",
+    "category": "Manga"
+  },
+  {
+    "id": "onepiece",
+    "title": "One Piece",
+    "cover": "cover_onepiece",
+    "address": "https://mangakatana.com/manga/one-piece.49",
+    "category": "Manga"
+  },
+  {
+    "id": "aot",
+    "title": "Attack on Titan",
+    "cover": "cover_aot",
+    "address": "https://mangakatana.com/manga/attack-on-titan.842",
+    "category": "Manga"
+  },
+  {
+    "id": "demonslayer",
+    "title": "Demon Slayer",
+    "cover": "cover_demonslayer",
+    "address": "https://mangakatana.com/manga/kimetsu-no-yaiba.16355",
+    "category": "Manga"
+  },
+  {
+    "id": "deathnote",
+    "title": "Death Note",
+    "cover": "cover_deathnote",
+    "address": "https://mangakatana.com/manga/death-note.6685",
+    "category": "Manga"
+  },
+  {
+    "id": "tokyoghoul",
+    "title": "Tokyo Ghoul",
+    "cover": "cover_tokyoghoul",
+    "address": "https://mangakatana.com/manga/tokyo-ghoul.3476",
+    "category": "Manga"
+  },
+  {
+    "id": "jjk",
+    "title": "Jujutsu Kaisen",
+    "cover": "cover_jjk",
+    "address": "https://mangakatana.com/manga/jujutsu-kaisen.20224",
+    "category": "Manga"
+  },
+  {
+    "id": "hxh",
+    "title": "Hunter x Hunter",
+    "cover": "cover_hxh",
+    "address": "https://mangakatana.com/manga/hunter-x-hunter.3474",
+    "category": "Manga"
+  },
+  {
+    "id": "mha",
+    "title": "My Hero Academia",
+    "cover": "cover_mha",
+    "address": "https://mangakatana.com/manga/boku-no-hero-academia.551",
+    "category": "Manga"
+  },
+  {
+    "id": "fma",
+    "title": "Fullmetal Alchemist",
+    "cover": "cover_fma",
+    "address": "https://mangakatana.com/manga/fullmetal-alchemist.3792",
+    "category": "Manga"
+  },
+  {
+    "id": "opm",
+    "title": "One Punch Man",
+    "cover": "cover_opm",
+    "address": "https://mangakatana.com/manga/onepunch-man.437",
+    "category": "Manga"
+  },
+  {
+    "id": "dbs",
+    "title": "Dragon Ball Super",
+    "cover": "cover_dbs",
+    "address": "https://mangakatana.com/manga/dragon-ball-super.17794",
+    "category": "Manga"
+  },
+  {
+    "id": "chainsawman",
+    "title": "Chainsaw Man",
+    "cover": "cover_chainsawman",
+    "address": "https://mangakatana.com/manga/chainsaw-man.21890",
+    "category": "Manga"
+  },
+  {
+    "id": "bluelock",
+    "title": "Blue Lock",
+    "cover": "cover_bluelock",
+    "address": "https://mangakatana.com/manga/blue-lock.22750",
+    "category": "Manga"
+  },
+  {
+    "id": "vinlandsaga",
+    "title": "Vinland Saga",
+    "cover": "cover_vinlandsaga",
+    "address": "https://mangakatana.com/manga/vinland-saga.177",
+    "category": "Manga"
+  },
+  {
+    "id": "berserk",
+    "title": "Berserk",
+    "cover": "cover_berserk",
+    "address": "https://mangakatana.com/manga/berserk.1087",
+    "category": "Manga"
+  },
+  {
+    "id": "sololeveling",
+    "title": "Solo Leveling",
+    "cover": "cover_sololeveling",
+    "address": "https://mangakatana.com/manga/solo-leveling.21708",
+    "category": "Manga"
+  },
+  {
+    "id": "spyxfamily",
+    "title": "Spy x Family",
+    "cover": "cover_spyxfamily",
+    "address": "https://mangakatana.com/manga/spy-x-family.22629",
+    "category": "Manga"
+  },
+  {
+    "id": "bleachunforgivens",
+    "title": "Bleach: The Unforgivens",
+    "cover": "cover_bleachunforgivens",
+    "address": "https://mangakatana.com/manga/bleach-the-unforgivens.21739",
+    "category": "Manga"
+  },
+  {
+    "id": "bleachtybw",
+    "title": "Bleach: Thousand-Year Blood War",
+    "cover": "cover_bleachtybw",
+    "address": "https://mangakatana.com/manga/bleach.47/c480",
+    "category": "Manga"
+  },
+  {
+    "id": "venom",
+    "title": "Venom (2018)",
+    "cover": "cover_venom",
+    "address": "https://readcomicsonline.ru/comic/venom-2018",
+    "category": "Marvel"
+  },
+  {
+    "id": "ironman",
+    "title": "Invincible Iron Man",
+    "cover": "cover_ironman",
+    "address": "https://readcomicsonline.ru/comic/invincible-iron-man-2022",
+    "category": "Marvel"
+  },
+  {
+    "id": "avengers",
+    "title": "Avengers (2018)",
+    "cover": "cover_avengers",
+    "address": "https://readcomicsonline.ru/comic/avengers-2018",
+    "category": "Marvel"
+  },
+  {
+    "id": "wolverine",
+    "title": "Old Man Logan",
+    "cover": "cover_wolverine",
+    "address": "https://readcomicsonline.ru/comic/old-man-logan-2015",
+    "category": "Marvel"
+  },
+  {
+    "id": "spiderman",
+    "title": "Spider-Man",
+    "cover": "spiderman_cover",
+    "address": "https://readcomicsonline.ru/comic/the-amazing-spiderman-2022",
+    "category": "Marvel"
+  },
+  {
+    "id": "deadpool",
+    "title": "Deadpool",
+    "cover": "deadpool_cover",
+    "address": "https://readcomicsonline.ru/comic/deadpool-2018",
+    "category": "Marvel"
+  },
+  {
+    "id": "moonknight",
+    "title": "Moon Knight",
+    "cover": "moonknight",
+    "address": "https://readcomicsonline.ru/comic/moon-knight-2021",
+    "category": "Marvel"
+  },
+  {
+    "id": "secretwars",
+    "title": "Secret Wars",
+    "cover": "secretwars",
+    "address": "https://readcomicsonline.ru/comic/marvel-super-heroes-secret-wars-battleworld-2023",
+    "category": "Marvel"
+  },
+  {
+    "id": "thor",
+    "title": "Thor (2020)",
+    "cover": "cover_thor",
+    "address": "https://readcomicsonline.ru/comic/thor-2020",
+    "category": "Marvel"
+  },
+  {
+    "id": "fantasticfour",
+    "title": "Fantastic Four (2018)",
+    "cover": "cover_fantasticfour",
+    "address": "https://readcomicsonline.ru/comic/fantastic-four-2018",
+    "category": "Marvel"
+  },
+  {
+    "id": "immortalhulk",
+    "title": "Immortal Hulk",
+    "cover": "cover_immortalhulk",
+    "address": "https://readcomicsonline.ru/comic/immortal-hulk-2018",
+    "category": "Marvel"
+  },
+  {
+    "id": "blackpanther",
+    "title": "Black Panther (2018)",
+    "cover": "cover_blackpanther",
+    "address": "https://readcomicsonline.ru/comic/black-panther-2018",
+    "category": "Marvel"
+  },
+  {
+    "id": "captainamerica",
+    "title": "Captain America (2018)",
+    "cover": "cover_captainamerica",
+    "address": "https://readcomicsonline.ru/comic/captain-america-2018",
+    "category": "Marvel"
+  },
+  {
+    "id": "doctorstrange",
+    "title": "Doctor Strange (2018)",
+    "cover": "cover_doctorstrange",
+    "address": "https://readcomicsonline.ru/comic/doctor-strange-2018",
+    "category": "Marvel"
+  },
+  {
+    "id": "guardians",
+    "title": "Guardians of the Galaxy (2017)",
+    "cover": "cover_guardians",
+    "address": "https://readcomicsonline.ru/comic/guardians-of-the-galaxy-2017",
+    "category": "Marvel"
+  },
+  {
+    "id": "daredevil",
+    "title": "Daredevil (2019)",
+    "cover": "cover_daredevil",
+    "address": "https://readcomicsonline.ru/comic/daredevil-2019",
+    "category": "Marvel"
+  },
+  {
+    "id": "gorr",
+    "title": "Gorr the God Butcher",
+    "cover": "cover_gorr",
+    "address": "https://readcomicsonline.ru/comic/thor-god-of-thunder-the-god-butcher-infinity-comic-2022",
+    "category": "Marvel"
+  },
+  {
+    "id": "batman",
+    "title": "Batman: The Long Halloween Special",
+    "cover": "cover_batman",
+    "address": "https://readcomicsonline.ru/comic/batman-the-long-halloween-special-2021",
+    "category": "DC"
+  },
+  {
+    "id": "superman",
+    "title": "Superman (2016)",
+    "cover": "cover_superman",
+    "address": "https://readcomicsonline.ru/comic/superman-2016",
+    "category": "DC"
+  },
+  {
+    "id": "flashpoint",
+    "title": "Flashpoint Beyond",
+    "cover": "cover_flashpoint",
+    "address": "https://readcomicsonline.ru/comic/flashpoint-beyond-2022",
+    "category": "DC"
+  },
+  {
+    "id": "injustice",
+    "title": "Injustice 2",
+    "cover": "cover_injustice",
+    "address": "https://readcomicsonline.ru/comic/injustice-2-2017",
+    "category": "DC"
+  },
+  {
+    "id": "dccrisis",
+    "title": "Crisis on Infinite Earths: Paragons Rising",
+    "cover": "cover_dccrisis",
+    "address": "https://readcomicsonline.ru/comic/crisis-on-infinite-earths-paragons-rising-the-deluxe-edition-2020",
+    "category": "DC"
+  },
+  {
+    "id": "justiceleague",
+    "title": "Justice League (2016)",
+    "cover": "cover_justiceleague",
+    "address": "https://readcomicsonline.ru/comic/justice-league-2016",
+    "category": "DC"
+  },
+  {
+    "id": "theflash",
+    "title": "The Flash (2016)",
+    "cover": "cover_theflash",
+    "address": "https://readcomicsonline.ru/comic/the-flash-2016",
+    "category": "DC"
+  },
+  {
+    "id": "greenlantern",
+    "title": "Green Lantern (2021)",
+    "cover": "cover_greenlantern",
+    "address": "https://readcomicsonline.ru/comic/green-lantern-2021",
+    "category": "DC"
+  },
+  {
+    "id": "aquaman",
+    "title": "Aquaman (2016)",
+    "cover": "cover_aquaman",
+    "address": "https://readcomicsonline.ru/comic/aquaman-2016-rebirth",
+    "category": "DC"
+  },
+  {
+    "id": "teentitans",
+    "title": "Teen Titans (2016)",
+    "cover": "cover_teentitans",
+    "address": "https://readcomicsonline.ru/comic/teen-titans-2016",
+    "category": "DC"
+  },
+  {
+    "id": "nightwing",
+    "title": "Nightwing (2016)",
+    "cover": "cover_nightwing",
+    "address": "https://readcomicsonline.ru/comic/nightwing-2016",
+    "category": "DC"
+  },
+  {
+    "id": "sandman",
+    "title": "The Sandman (Deluxe Edition)",
+    "cover": "cover_sandman",
+    "address": "https://readcomicsonline.ru/comic/the-sandman-the-deluxe-edition-2020",
+    "category": "DC"
+  },
+  {
+    "id": "suicidesquad",
+    "title": "Suicide Squad (2016)",
+    "cover": "cover_suicidesquad",
+    "address": "https://readcomicsonline.ru/comic/suicide-squad-2016",
+    "category": "DC"
+  },
+  {
+    "id": "greenlanterncorps",
+    "title": "Green Lantern Corps (2025)",
+    "cover": "cover_greenlanterncorps",
+    "address": "https://readcomicsonline.ru/comic/green-lantern-corps-2025",
+    "category": "DC"
+  },
+  {
+    "id": "invincible",
+    "title": "Invincible",
+    "cover": "cover_invincible",
+    "address": "https://readcomicsonline.ru/comic/invincible-2005",
+    "category": "Invincible"
+  },
+  {
+    "id": "starwars",
+    "title": "Star Wars: Darth Vader",
+    "cover": "cover_starwars",
+    "address": "https://readcomicsonline.ru/comic/star-wars-darth-vader-2020",
+    "category": "Comics"
+  },
+  {
+    "id": "transformers",
+    "title": "Transformers",
+    "cover": "cover_transformers",
+    "address": "https://readcomicsonline.ru/comic/transformers-2019",
+    "category": "Comics"
+  },
+  {
+    "id": "tmnt",
+    "title": "Teenage Mutant Ninja Turtles",
+    "cover": "cover_tmnt",
+    "address": "https://readcomicsonline.ru/comic/teenage-mutant-ninja-turtles-2011",
+    "category": "Comics"
+  }
+]
