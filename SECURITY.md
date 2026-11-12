@@ -5,7 +5,7 @@
 If you discover a security issue in PanelVerse, please report it **privately** rather than opening a public issue:
 
 - Open a **private** [GitHub security advisory](https://github.com/Hazemserry90/panelverse/security/advisories/new), or
-- Email **hazemsery15@gmail.com** with a description, reproduction steps, and the affected version/commit.
+- Email **saulgoodman547@gmail.com** with a description, reproduction steps, and the affected version/commit.
 
 Please allow reasonable time for a fix before any public disclosure.
 
