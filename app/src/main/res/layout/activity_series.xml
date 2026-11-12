@@ -72,7 +72,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/pv_ink_save" />
+                android:text="@string/pv_library_favorite" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/seriesShare"
@@ -84,6 +84,13 @@
                 android:text="@string/pv_ink_share" />
         </LinearLayout>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/seriesWant"
+            style="@style/Widget.PanelVerse.Button.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/pv_saved_want" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="8dp"
@@ -92,10 +99,40 @@
             android:importantForAccessibility="no" />
 
         <TextView
+            android:id="@+id/seriesChaptersStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/pv_ink_provider_chapters"
+            android:text="@string/pv_chapter_loading"
             android:textAppearance="@style/TextAppearance.PanelVerse.Body" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/seriesChaptersRetry"
+            style="@style/Widget.PanelVerse.Button.Outlined"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pv_chapter_retry"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/seriesChaptersWeb"
+            style="@style/Widget.PanelVerse.Button.Outlined"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pv_chapter_web" />
+
+        <LinearLayout
+            android:id="@+id/seriesChapters"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/seriesChaptersMore"
+            style="@style/Widget.PanelVerse.Button.Outlined"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pv_chapter_more"
+            android:visibility="gone" />
     </LinearLayout>
 </ScrollView>

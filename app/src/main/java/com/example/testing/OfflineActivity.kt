@@ -3,7 +3,6 @@ package com.example.testing
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -48,14 +47,21 @@ class OfflineActivity : AppCompatActivity() {
         importButton.isEnabled = false
         status.setText(R.string.pv_offline_importing)
         worker.execute {
-            val book = runCatching { library.importBook(uri) }.getOrNull()
+            val result = runCatching { library.importBook(uri) }
             runOnUiThread {
                 if (isDestroyed || isFinishing) return@runOnUiThread
                 busy = false
                 importButton.isEnabled = true
                 refreshShelf()
-                if (book == null) status.setText(R.string.pv_offline_import_failed)
-                else openBook(book)
+                result.onSuccess(::openBook).onFailure { error ->
+                    val message = if (error is OfflineArchive.Rejected || error is java.util.zip.ZipException ||
+                        error is IllegalArgumentException) {
+                        R.string.pv_offline_import_rejected
+                    } else {
+                        R.string.pv_offline_import_failed
+                    }
+                    status.setText(message)
+                }
             }
         }
     }
@@ -93,7 +99,13 @@ class OfflineActivity : AppCompatActivity() {
             val row = Button(this).apply {
                 text = book.nameWithoutExtension
                 isAllCaps = false
-                setOnClickListener { if (!busy) openBook(book) }
+                setOnClickListener {
+                    if (!busy) {
+                        val download = library.downloadedChapter(book)
+                        if (download == null) openBook(book)
+                        else NativeReaderActivity.open(this@OfflineActivity, download.series, download.chapter, download.last)
+                    }
+                }
                 setOnLongClickListener {
                     if (!busy) confirmRemove(book)
                     true
@@ -134,19 +146,10 @@ class OfflineActivity : AppCompatActivity() {
             var actual = 0
             val bitmap = runCatching {
                 ZipFile(book).use { zip ->
-                    val pages = library.pages(zip)
+                    val pages = OfflineArchive.pages(zip)
                     count = pages.size
                     actual = position.coerceIn(pages.indices)
-                    val entry = pages[actual]
-                    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    zip.getInputStream(entry).use { BitmapFactory.decodeStream(it, null, options) }
-                    if (options.outWidth <= 0 || options.outHeight <= 0) return@use null
-
-                    var sample = 1
-                    while (options.outWidth / sample > 2048 || options.outHeight / sample > 4096) sample *= 2
-                    options.inJustDecodeBounds = false
-                    options.inSampleSize = sample
-                    zip.getInputStream(entry).use { BitmapFactory.decodeStream(it, null, options) }
+                    library.decodePage(zip, pages[actual])
                 }
             }.getOrNull()
             runOnUiThread {

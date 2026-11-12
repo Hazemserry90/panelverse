@@ -6,8 +6,8 @@
     <item android:title="@string/pv_ai"
         android:icon="@drawable/ic_ai"
         android:id="@+id/ai"/>
-    <item android:title="@string/pv_saved_2"
-        android:icon="@android:drawable/btn_star_big_off"
+    <item android:title="@string/pv_library"
+        android:icon="@drawable/ic_library_books"
         android:id="@+id/favorites"/>
     <item android:title="@string/pv_profile"
         android:icon="@drawable/baseline_account_circle_24"

@@ -28,11 +28,12 @@ import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
-import java.net.URI
-import java.net.URISyntaxException
-import java.util.Locale
 
 class ReaderActivity : AppCompatActivity() {
 
@@ -40,14 +41,22 @@ class ReaderActivity : AppCompatActivity() {
         private const val READER_SETTINGS = "reader_settings"
         private const val BLOCK_ADS = "block_ads"
         private const val RESTORE_RETRY_MS = 250L
-        private const val MAX_RESTORE_ATTEMPTS = 32
+        private const val MAX_ANCHOR_ATTEMPTS = 48
+        private const val MAX_OFFSET_ATTEMPTS = 16
         private const val SAVE_DELAY_MS = 350L
 
-        fun open(context: Context, series: MangaItem) {
+        fun open(
+            context: Context, series: MangaItem, chapter: String? = null, browse: Boolean = false,
+            downloadTitle: String? = null, lastIssue: Boolean = false
+        ) {
             context.startActivity(Intent(context, ReaderActivity::class.java).apply {
-                putExtra("url", series.url)
+                putExtra("url", chapter ?: series.url)
                 putExtra("title", series.title)
                 putExtra("series_id", series.id)
+                putExtra("explicit_chapter", chapter != null)
+                putExtra("browse_issues", browse)
+                putExtra("download_title", downloadTitle)
+                putExtra("last_issue", lastIssue)
             })
         }
     }
@@ -67,8 +76,12 @@ class ReaderActivity : AppCompatActivity() {
     private var failed = false
     private lateinit var errorPanel: View
     private var seriesId: String? = null
+    private var markedReading = false
+    private var automaticDownloadStarted = false
+    private var collectingDownloadUrl: String? = null
     private var restoreProgress: ReadingHistoryManager.Progress? = null
     private var restoreAttempts = 0
+    private var offsetAttempts = 0
     private var lastSaved: ReadingHistoryManager.Progress? = null
     private var saveGeneration = 0L
     private val readerPageScript by lazy {
@@ -94,14 +107,20 @@ class ReaderActivity : AppCompatActivity() {
 
         val initialProvider = providerFor(url)
         if (url == null || initialProvider == null) {
-            Toast.makeText(this, R.string.pv_reader_unsupported_provider, Toast.LENGTH_SHORT).show()
+            showBlockedNavigation(url)
             finish()
             return
         }
         provider = initialProvider
         seriesId = intent.getStringExtra("series_id")
+        val entry = HomeFragment.catalogue.firstOrNull { it.id == seriesId }
         restoreProgress = seriesId?.let { ReadingHistoryManager.getProgress(this, it) }
-            ?.takeIf { providerFor(it.url) == provider }
+            ?.takeIf { saved ->
+                !intent.getBooleanExtra("browse_issues", false) && providerFor(saved.url) == provider &&
+                    (entry?.id != "bleachtybw" || ProviderChapters.chapterUrl(entry, saved.url) != null) &&
+                    (!intent.getBooleanExtra("explicit_chapter", false) ||
+                        (entry != null && ProviderChapters.chapterUrl(entry, saved.url)?.toString() == url))
+            }
         lastSaved = restoreProgress
         currentUrl = restoreProgress?.url ?: url
 
@@ -142,6 +161,7 @@ class ReaderActivity : AppCompatActivity() {
         webView.settings.allowFileAccess = false
         webView.settings.allowContentAccess = false
         webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) webView.settings.safeBrowsingEnabled = true
         webView.settings.setSupportMultipleWindows(true)
         webView.settings.javaScriptCanOpenWindowsAutomatically = false
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false)
@@ -149,10 +169,22 @@ class ReaderActivity : AppCompatActivity() {
         // ── WebViewClient: keep navigation inside the WebView ──────────────
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                if (!blockAds || request.isForMainFrame) return null
+                if (request.isForMainFrame) {
+                    if (providerFor(request.url.toString()) == initialProvider) return null
+                    return WebResourceResponse(
+                        "text/plain", "UTF-8", 403, "Blocked reader link", emptyMap(),
+                        ByteArrayInputStream(ByteArray(0))
+                    )
+                }
+                if (!blockAds) return null
                 val url = request.url
                 if (url.scheme != "https" && url.scheme != "http") return null
-                if (!ReaderAdHosts.blocks(url.host)) return null
+                val blocked = if (initialProvider == "mangakatana.com") {
+                    ReaderAdHosts.blocksMangaKatanaResource(url.host, url.path, request.requestHeaders)
+                } else {
+                    ReaderAdHosts.blocks(url.host)
+                }
+                if (!blocked) return null
                 return WebResourceResponse(
                     "text/plain", "UTF-8", 204, "No Content", emptyMap(),
                     ByteArrayInputStream(ByteArray(0))
@@ -165,7 +197,7 @@ class ReaderActivity : AppCompatActivity() {
                     saveProgress()
                     return false
                 }
-                if (request.hasGesture()) showBlockedNavigation()
+                if (request.hasGesture()) showBlockedNavigation(request.url.toString())
                 return true
             }
 
@@ -173,7 +205,7 @@ class ReaderActivity : AppCompatActivity() {
                 if (providerFor(url) != provider) {
                     view.stopLoading()
                     showError()
-                    showBlockedNavigation()
+                    showBlockedNavigation(url)
                     return
                 }
                 view.removeCallbacks(restoreScroll)
@@ -202,13 +234,33 @@ class ReaderActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView, url: String) {
                 rememberLoadedPage(view, url)
                 if (!failed && loadedUrl == url) applyAdFilter()
+                if (entry != null && initialProvider == "readcomicsonline.ru" && !failed && loadedUrl == url) {
+                    val path = Uri.parse(url).pathSegments
+                    if (path == Uri.parse(entry.url).pathSegments) {
+                        runPageScript("comic-issues", url) { result ->
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                ComicWebData.rememberIssues(applicationContext, entry, result)
+                            }
+                        }
+                    }
+                    val label = intent.getStringExtra("download_title")
+                    if (!automaticDownloadStarted && label != null &&
+                        ProviderChapters.chapterUrl(entry, url)?.toString() == intent.getStringExtra("url")) {
+                        automaticDownloadStarted = true
+                        collectComicDownload(entry, label, intent.getBooleanExtra("last_issue", false))
+                    }
+                }
             }
 
             private fun rememberLoadedPage(view: WebView, url: String) {
                 if (failed || url != currentUrl || providerFor(url) != provider) return
                 if (loadedUrl == url) return
                 loadedUrl = url
-                title?.let { ReadingHistoryManager.addToHistory(this@ReaderActivity, it) }
+                title?.let { ReadingHistoryManager.addToHistory(this@ReaderActivity, it, seriesId) }
+                if (!markedReading && entry != null && ProviderChapters.chapterUrl(entry, url) != null) {
+                    markedReading = true
+                    SavedLists.markReading(entry.id)
+                }
                 val saved = restoreProgress
                 applyAdFilter()
                 if (saved == null || saved.url != url || (saved.scrollY == 0 && saved.anchor == null)) {
@@ -218,6 +270,7 @@ class ReaderActivity : AppCompatActivity() {
                 }
 
                 restoreAttempts = 0
+                offsetAttempts = 0
                 val generation = restoreGeneration
                 view.postVisualStateCallback(generation, object : WebView.VisualStateCallback() {
                     override fun onComplete(requestId: Long) {
@@ -246,6 +299,8 @@ class ReaderActivity : AppCompatActivity() {
         readerOptionsButton.setOnClickListener { anchor ->
             val popup = PopupMenu(this, anchor)
             val browser = popup.menu.add(R.string.pv_open_in_browser)
+            val download = if (entry != null && initialProvider == "readcomicsonline.ru")
+                popup.menu.add(R.string.pv_download_issue) else null
             val blocker = popup.menu.add(R.string.pv_ink_block_ads).apply {
                 isCheckable = true
                 isChecked = blockAds
@@ -253,6 +308,7 @@ class ReaderActivity : AppCompatActivity() {
             popup.setOnMenuItemClickListener { item ->
                 when (item) {
                     browser -> openCurrentPageInBrowser()
+                    download -> if (entry != null) collectComicDownload(entry)
                     blocker -> {
                         blockAds = !blockAds
                         settings.edit().putBoolean(BLOCK_ADS, blockAds).apply()
@@ -298,12 +354,69 @@ class ReaderActivity : AppCompatActivity() {
         }
     }
 
+    private fun collectComicDownload(series: MangaItem, label: String? = null, lastIssue: Boolean = false) {
+        val url = loadedUrl
+        val canonical = ProviderChapters.chapterUrl(series, url)
+        if (url == null || canonical == null || failed) {
+            Toast.makeText(this, R.string.pv_open_issue_to_download, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (collectingDownloadUrl == url) return
+        collectingDownloadUrl = url
+        val title = label ?: getString(R.string.pv_issue_number, canonical.pathSegments.last().removePrefix("issue-"))
+        val chapter = ProviderChapters.Chapter(title, canonical.toString())
+        val book = OfflineLibrary(this).chapterBook(series, chapter.url)
+        if (book.isFile) {
+            collectingDownloadUrl = null
+            Toast.makeText(this, R.string.pv_download_complete, Toast.LENGTH_SHORT).show()
+            return
+        }
+        collectComicPages(series, chapter, url, book, lastIssue, attempts = 12)
+    }
+
+    private fun collectComicPages(
+        series: MangaItem, chapter: ProviderChapters.Chapter, url: String,
+        book: java.io.File, lastIssue: Boolean, attempts: Int
+    ) {
+        if (isFinishing || isDestroyed || loadedUrl != url || collectingDownloadUrl != url) {
+            if (collectingDownloadUrl == url) collectingDownloadUrl = null
+            return
+        }
+        runPageScript("comic-pages", url) { result ->
+            lifecycleScope.launch {
+                val stored = withContext(Dispatchers.IO) { ComicWebData.rememberPages(applicationContext, book, result) }
+                if (isFinishing || loadedUrl != url || collectingDownloadUrl != url) {
+                    if (collectingDownloadUrl == url) collectingDownloadUrl = null
+                    return@launch
+                }
+                when {
+                    stored -> {
+                        collectingDownloadUrl = null
+                        val work = ChapterDownloadWorker.enqueue(this@ReaderActivity, series, chapter, lastIssue)
+                        showChapterDownloadProgress(this@ReaderActivity, work, book)
+                    }
+                    attempts > 1 -> webView.postDelayed({
+                        collectComicPages(series, chapter, url, book, lastIssue, attempts - 1)
+                    }, 500)
+                    else -> {
+                        collectingDownloadUrl = null
+                        Toast.makeText(this@ReaderActivity, R.string.pv_issue_pages_not_ready, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
+
     private fun openCurrentPageInBrowser() {
         val url = currentUrl
-        if (providerFor(url) != provider) return
+        val link = ReaderLinks.inspect(url) as? ReaderLinks.Approved
+        if (link?.provider != provider) {
+            showBlockedNavigation(url)
+            return
+        }
         val uri = Uri.parse(url)
         AlertDialog.Builder(this)
-            .setMessage(getString(R.string.pv_reader_browser_confirm, uri.host))
+            .setMessage(getString(R.string.pv_reader_browser_confirm, link.host))
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.pv_open_in_browser) { _, _ ->
                 try {
@@ -331,7 +444,7 @@ class ReaderActivity : AppCompatActivity() {
         if (loadedUrl != target.url || webView.url != target.url) return
 
         val anchor = target.anchor
-        if (anchor != null && restoreAttempts < MAX_RESTORE_ATTEMPTS) {
+        if (anchor != null && restoreAttempts < MAX_ANCHOR_ATTEMPTS) {
             val anchorJson = JSONObject().put("key", anchor.key).put("offset", anchor.offset)
             val generation = restoreGeneration
             runPageScript("restore", target.url, anchorJson.toString()) { result ->
@@ -350,10 +463,17 @@ class ReaderActivity : AppCompatActivity() {
         // Keep the pixel offset as a fallback for older bookmarks and non-image readers.
         webView.scrollTo(0, target.scrollY)
         if (webView.scrollY >= target.scrollY - 1) {
-            if (anchor == null) cancelRestore()
-        } else if (++restoreAttempts < MAX_RESTORE_ATTEMPTS) {
+            if (anchor == null) {
+                cancelRestore()
+            } else {
+                Toast.makeText(this, R.string.pv_resume_approximate, Toast.LENGTH_LONG).show()
+            }
+        } else if (++offsetAttempts < MAX_OFFSET_ATTEMPTS) {
             webView.postDelayed(restoreScroll, RESTORE_RETRY_MS)
+        } else {
+            Toast.makeText(this, R.string.pv_resume_unavailable, Toast.LENGTH_LONG).show()
         }
+        // Leave the saved bookmark intact after a fallback until the reader scrolls manually.
     }
 
     private fun applyAdFilter() {
@@ -407,21 +527,17 @@ class ReaderActivity : AppCompatActivity() {
         lastSaved = progress
     }
 
-    private fun showBlockedNavigation() {
-        Toast.makeText(this, R.string.pv_reader_unsupported_provider, Toast.LENGTH_SHORT).show()
+    private fun showBlockedNavigation(url: String?) {
+        val message = if (ReaderLinks.inspect(url) == ReaderLinks.Blocked.UNSAFE_FORMAT) {
+            R.string.pv_reader_unsafe_url
+        } else {
+            R.string.pv_reader_unsupported_provider
+        }
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
-    private fun providerFor(url: String?): String? {
-        if (url.isNullOrBlank() || url.length > 4096) return null
-        val parsed = try { URI(url) } catch (_: URISyntaxException) { return null }
-        if (!parsed.scheme.equals("https", ignoreCase = true) || parsed.rawUserInfo != null ||
-            (parsed.port != -1 && parsed.port != 443)) return null
-        return when (parsed.host?.lowercase(Locale.ROOT)) {
-            "mangakatana.com", "www.mangakatana.com" -> "mangakatana.com"
-            "readcomicsonline.ru", "www.readcomicsonline.ru" -> "readcomicsonline.ru"
-            else -> null
-        }
-    }
+    private fun providerFor(url: String?): String? =
+        (ReaderLinks.inspect(url) as? ReaderLinks.Approved)?.provider
 
     override fun onPause() {
         super.onPause()

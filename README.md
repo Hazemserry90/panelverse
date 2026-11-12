@@ -5,10 +5,10 @@ PanelVerse is an Android app for browsing manga and comics, keeping a reading li
 ## Features
 
 - **Home and Discover** — Browse Manga, Marvel, DC, Invincible, and Comics. Search by title or find recommendations based on your interests and reading history.
-- **Series and Saved** — Open a title to see its cover and reading provider. Save favourites to your Firebase account or share a series link.
-- **Web reader** — Open provider chapters inside the app. The reader saves your last loaded chapter and uses the visible page image or scroll position to resume. Restoration depends on the provider’s layout.
+- **Series and Library** — Browse manga chapters and comic issues, share a series link, and manage Favorites separately from Reading, Want to Read, and Finished. Use **Want to Read** on a series page or long-press a title in your Library to move it between reading lists.
+- **Reader** — Open supported chapters in the native reader with page controls, a scrubber, and right-to-left, left-to-right, or vertical reading. The web reader remains available from the series and reader controls when a provider chapter needs it.
 - **Ad filtering** — Use **Reader options → Block ads** to block known ad hosts and hide supported overlays. Provider ads can change, so some may still appear.
-- **Offline library** — Import a local CBZ with JPG, PNG, or WebP pages. PanelVerse keeps a copy on the device and remembers the last page for each book.
+- **Offline library** — Download supported chapters or import a local CBZ with JPG, PNG, or WebP pages. PanelVerse keeps the files on the device and remembers your page.
 - **Appearance and reminders** — Switch between paper and ink themes and control local reading reminders in Settings.
 
 ## Install on Android
@@ -17,11 +17,11 @@ If a signed APK has been published, download it from [GitHub Releases](https://g
 
 ## Read offline
 
-1. Put a CBZ file you’re allowed to use on your phone.
-2. In PanelVerse, open **Offline → Import CBZ** and select the file.
-3. Open the imported title from the library. **Previous** and **Next** turn pages. Reopening it resumes at the last page you read.
+For a supported chapter or issue, open its series and tap **Download** next to the entry. The button shows download progress. Open the finished download from **Offline**. Provider availability and supported page formats determine whether a download succeeds.
 
-The offline library supports imported files up to 250 MB. Provider chapters are streamed in the web reader. Importing CBZ files is the current offline workflow.
+If a comic’s issue list is unavailable in the app, tap **Browse issues to download**, open an issue, then choose **Reader options → Download issue**.
+
+You can also put a CBZ you’re allowed to use on your phone and select it under **Offline → Import CBZ**. The offline library supports archives up to 250 MB.
 
 ## Build from source
 

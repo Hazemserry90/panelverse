@@ -1,11 +1,43 @@
 function (operation, expectedUrl, anchor) {
     if (location.href !== expectedUrl || !document.documentElement) return null;
 
-    const notificationAd = "data-panelverse-notification-ad";
+    if ((operation === 'comic-issues' || operation === 'comic-pages') &&
+        (location.hostname === 'readcomicsonline.ru' || location.hostname === 'www.readcomicsonline.ru')) {
+        if (operation === 'comic-issues') {
+            const root = location.pathname.replace(/\/$/, '') + '/';
+            return [...document.querySelectorAll('a[href]')]
+                .filter(link => link.origin === location.origin && link.pathname.startsWith(root) &&
+                    !link.pathname.slice(root.length).includes('/') && link.pathname !== root)
+                .slice(0, 2000)
+                .map(link => ({
+                    url: link.href.slice(0, 4096),
+                    title: (link.querySelector('.text-brand-400') || link).textContent.trim().slice(0, 140)
+                }));
+        }
+
+        const attributes = ['data-background-image', 'data-cfsrc', 'data-lazy-src', 'data-src', 'data-original', 'src'];
+        const images = [...document.querySelectorAll('#reader-all img, #all img')];
+        if (!images.length || images.length > 1000) return null;
+        const pages = [];
+        for (const image of images) {
+            const source = attributes.map(name => image.getAttribute(name)).find(value => value && value.trim());
+            if (!source || source.length > 4096) return null;
+            try {
+                const url = new URL(source, location.href);
+                if (url.protocol !== 'https:') return null;
+                pages.push(url.href);
+            } catch (_) {
+                return null;
+            }
+        }
+        return pages;
+    }
+
+    const hiddenAd = "data-panelverse-hidden-ad";
     const adSelectors =
         'ins.adsbygoogle,[data-ad-slot],[data-ad-client],.ad-banner,.ad-slot,' +
         '.ad-popup,#ad-popup,.ad-overlay,#ad-overlay,[data-type="_mgwidget"][data-widget-id],' +
-        '[' + notificationAd + ']';
+        '[' + hiddenAd + ']';
 
     if (operation === 'ads-on' || operation === 'ads-off') {
         const existing = document.getElementById('panelverse-ad-filter');
@@ -14,8 +46,8 @@ function (operation, expectedUrl, anchor) {
                 if (existing.panelverseObserver) existing.panelverseObserver.disconnect();
                 existing.remove();
             }
-            for (const ad of document.querySelectorAll('[' + notificationAd + ']')) {
-                ad.removeAttribute(notificationAd);
+            for (const ad of document.querySelectorAll('[' + hiddenAd + ']')) {
+                ad.removeAttribute(hiddenAd);
             }
         } else if (!existing) {
             const style = document.createElement('style');
@@ -30,9 +62,64 @@ function (operation, expectedUrl, anchor) {
     }
 
     function watchMangaAds(style) {
-        const prompt = /click\s+["'“”]?\s*allow\s*["'“”]?\s+if you are not a robot/i;
+        const prompt = /click\s+["'“”]?\s*allow\s*["'“”]?\s+if\s+you\s+are\s+not\s+a\s+robot/i;
+        const ageAd = /confirm\s+that\s+you['’]re\s+over\s+18\s+and\s+then\s+click\s+["'“”]?allow["'“”]?\s+to\s+view\s+the\s+site/i;
+        const fakeCaptcha = /\be[\s–-]*captcha\b/i;
         const closeLabel = /^(?:close|dismiss|[x×✕✖])$/i;
-        let scheduled = false;
+        const protectedContent = 'img, picture, video, canvas, form, select, nav, header, footer';
+        let pendingScan = null;
+
+        function hideAd(element) {
+            element.setAttribute(hiddenAd, '');
+        }
+
+        function collapseSlot(label) {
+            if (label === document.body || label.querySelector(protectedContent)) return;
+            let slot = label;
+            for (let box = label.parentElement, depth = 0; box && box !== document.body && depth < 5;
+                box = box.parentElement, depth++) {
+                const text = box.textContent.replace(/[\s|]+/g, ' ').trim();
+                if (!/^remove ad$/i.test(text) ||
+                    box.querySelector(protectedContent) ||
+                    box.getBoundingClientRect().height > innerHeight * 0.6) break;
+                slot = box;
+            }
+            hideAd(slot);
+        }
+
+        function hidePrompt(seed, checked) {
+            let overlay = null;
+            for (let box = seed, depth = 0; box && box !== document.body && depth < 9;
+                box = box.parentElement, depth++) {
+                if (checked.has(box)) break;
+                checked.add(box);
+                const bounds = box.getBoundingClientRect();
+                if (bounds.width < 150 || bounds.height < 80) continue;
+                if (box.querySelector('form, select, nav, header, footer')) break;
+                const text = box.innerText || box.textContent;
+                const position = getComputedStyle(box).position;
+                const floating = position === 'fixed' || position === 'absolute';
+                if (floating && bounds.height <= innerHeight && ageAd.test(text)) {
+                    overlay = box;
+                    break;
+                }
+                if (!prompt.test(text)) continue;
+
+                const brandedPrompt = fakeCaptcha.test(text) && /\bcontinue\b/i.test(text);
+                if (!overlay && brandedPrompt && bounds.height <= innerHeight) overlay = box;
+                if (!floating) continue;
+
+                const close = [...box.querySelectorAll('button, a, [role="button"], [aria-label], [title], [onclick], [class*="close"]')]
+                    .some(control => closeLabel.test((control.getAttribute('aria-label') ||
+                        control.getAttribute('title') || control.textContent).trim()) ||
+                        (control.matches('[class*="close"]') && !control.textContent.trim()));
+                if (brandedPrompt || (bounds.height <= innerHeight && close && /\bcontinue\b/i.test(text))) {
+                    overlay = box;
+                    break;
+                }
+            }
+            if (overlay) hideAd(overlay);
+        }
 
         function markFloatingAds(body) {
             for (const artwork of body.querySelectorAll('img')) {
@@ -57,46 +144,38 @@ function (operation, expectedUrl, anchor) {
                     const controls = [...box.querySelectorAll('button, a, [aria-label], [onclick], [class*="close"]')];
                     if (controls.some(control =>
                         closeLabel.test((control.getAttribute('aria-label') || control.textContent).trim()))) {
-                        box.setAttribute(notificationAd, '');
+                        hideAd(box);
                     }
                     break;
                 }
             }
         }
-        function markPrompts() {
+        function scanAds() {
             const body = document.body;
             if (!style.isConnected || !body) return;
             markFloatingAds(body);
-            if (!prompt.test(body.textContent)) return;
+            const checked = new Set();
             const text = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
             for (let node = text.nextNode(); node; node = text.nextNode()) {
-                if (!prompt.test(node.nodeValue)) continue;
-                for (let box = node.parentElement, depth = 0; box && box !== body && depth < 6;
-                    box = box.parentElement, depth++) {
-                    const bounds = box.getBoundingClientRect();
-                    if (bounds.width < 150 || bounds.height < 80 || bounds.height > innerHeight * 0.9 ||
-                        box.querySelector('form, select, iframe, nav, header, footer')) continue;
-                    const controls = [...box.querySelectorAll('button, a, [role="button"], [aria-label], [onclick], [data-dismiss], [class*="close"]')];
-                    const hasClose = controls.some(control =>
-                        closeLabel.test((control.getAttribute('aria-label') || control.textContent).trim()));
-                    const hasContinue = controls.some(control => /^continue$/i.test(control.textContent.trim()));
-                    if (!hasClose || !hasContinue) continue;
-                    box.setAttribute(notificationAd, '');
-                    break;
-                }
+                const label = node.parentElement;
+                if (!label || label.closest('script, style, template, [' + hiddenAd + ']')) continue;
+                if (/^remove\s+ad$/i.test(label.textContent.trim())) collapseSlot(label);
+                else if (/\b(?:click|allow|robot)\b/i.test(node.nodeValue)) hidePrompt(label, checked);
             }
         }
 
-        markPrompts();
+        scanAds();
         const observer = new MutationObserver(() => {
-            if (scheduled) return;
-            scheduled = true;
-            requestAnimationFrame(() => {
-                scheduled = false;
-                markPrompts();
-            });
+            if (pendingScan !== null) return;
+            pendingScan = setTimeout(() => {
+                pendingScan = null;
+                scanAds();
+            }, 100);
         });
-        observer.observe(document.documentElement, {childList: true, subtree: true, characterData: true});
+        observer.observe(document.documentElement, {
+            childList: true, subtree: true, characterData: true, attributes: true,
+            attributeFilter: ['style', 'class', 'hidden']
+        });
         style.panelverseObserver = observer;
     }
 

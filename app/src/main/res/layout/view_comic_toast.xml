@@ -6,10 +6,10 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:background="@drawable/bg_speech_bubble"
-    android:paddingStart="20dp"
-    android:paddingEnd="20dp"
-    android:paddingTop="14dp"
-    android:paddingBottom="14dp">
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
 
     <TextView
         android:id="@+id/comicBubbleText"

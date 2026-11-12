@@ -27,23 +27,21 @@ object ComicBubble {
         val view = LayoutInflater.from(activity).inflate(R.layout.view_comic_toast, root, false)
         view.findViewById<TextView>(R.id.comicBubbleText).text = message
 
+        val navHeight = activity.findViewById<ViewGroup>(R.id.bottomNavContainer)?.height ?: 0
         val lp = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT
         ).apply {
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            bottomMargin = dp(activity, 200)
+            bottomMargin = navHeight + dp(activity, 8)
         }
         root.addView(view, lp)
 
         view.alpha = 0f
-        view.translationY = dp(activity, 24).toFloat()
-        view.scaleX = 0.85f
-        view.scaleY = 0.85f
-        view.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(170).start()
+        view.animate().alpha(1f).setDuration(170).start()
 
         view.postDelayed({
-            view.animate().alpha(0f).translationY(dp(activity, 16).toFloat()).setDuration(200)
+            view.animate().alpha(0f).setDuration(200)
                 .withEndAction { (view.parent as? ViewGroup)?.removeView(view) }
                 .start()
         }, 1500)

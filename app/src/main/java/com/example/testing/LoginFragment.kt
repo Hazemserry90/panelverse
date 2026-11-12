@@ -1,6 +1,8 @@
 package com.example.testing
 
 import android.content.SharedPreferences
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.util.Patterns
@@ -14,7 +16,11 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseUser
 
 class LoginFragment : Fragment() {
 
@@ -27,6 +33,7 @@ class LoginFragment : Fragment() {
         private const val KEY_LOCKOUT_UNTIL = "login_lockout_until"
         private const val KEY_LAST_VERIFICATION = "last_verification_email"
         private const val VERIFICATION_COOLDOWN = 60_000L
+        private const val SLOW_SIGN_IN_MILLIS = 8_000L
     }
 
     private var failedAttempts = 0
@@ -40,6 +47,9 @@ class LoginFragment : Fragment() {
     private lateinit var loginButton: MaterialButton
     private var lockoutMessage: TextView? = null
     private var attemptsWarning: TextView? = null
+    private val showSlowSignIn = Runnable {
+        loginButton.setText(R.string.pv_login_still_signing_in)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -145,9 +155,17 @@ class LoginFragment : Fragment() {
             passwordField.error = "Password must be at least 6 characters"; passwordField.requestFocus(); return
         }
 
-        loginButton.isEnabled = false
-        loginButton.text = getString(R.string.pv_logging_in)
+        updateAttemptsUI()
+        val connectivity = requireContext().getSystemService(ConnectivityManager::class.java)
+        val network = connectivity?.getNetworkCapabilities(connectivity.activeNetwork)
+        if (connectivity != null && network?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) != true) {
+            showLoginMessage(R.string.pv_login_network_error)
+            return
+        }
 
+        loginButton.isEnabled = false
+        loginButton.setText(R.string.pv_logging_in)
+        loginButton.postDelayed(showSlowSignIn, SLOW_SIGN_IN_MILLIS)
         auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
             if (task.isSuccessful && task.result?.user?.isEmailVerified != true && view == null) {
                 val uid = task.result?.user?.uid
@@ -155,12 +173,13 @@ class LoginFragment : Fragment() {
                 return@addOnCompleteListener
             }
             if (!isAdded || view == null) return@addOnCompleteListener
-            loginButton.isEnabled = !isLockedOut
-            loginButton.text = getString(R.string.pv_login_txt)
+            loginButton.removeCallbacks(showSlowSignIn)
+            resetLoginButton()
             if (task.isSuccessful) {
                 val user = task.result?.user
                 if (user == null || !user.isEmailVerified) {
                     if (user != null) resendVerification(user)
+                    else showLoginMessage(R.string.pv_login_error)
                     return@addOnCompleteListener
                 }
                 failedAttempts = 0
@@ -168,28 +187,50 @@ class LoginFragment : Fragment() {
                 updateAttemptsUI()
                 findNavController().navigate(R.id.action_gameFragment_to_navbarFragment)
             } else {
-                handleFailedLogin()
+                when (val error = task.exception) {
+                    is FirebaseNetworkException -> showLoginMessage(R.string.pv_login_network_error)
+                    is FirebaseTooManyRequestsException -> showLoginMessage(R.string.pv_login_throttled)
+                    is FirebaseAuthException -> when (error.errorCode) {
+                        "ERROR_WRONG_PASSWORD", "ERROR_INVALID_CREDENTIAL",
+                        "ERROR_INVALID_LOGIN_CREDENTIALS", "ERROR_USER_NOT_FOUND" -> handleFailedLogin()
+                        else -> showLoginMessage(R.string.pv_login_error)
+                    }
+                    else -> showLoginMessage(R.string.pv_login_error)
+                }
             }
         }
     }
 
-    private fun resendVerification(user: com.google.firebase.auth.FirebaseUser) {
+    private fun resendVerification(user: FirebaseUser) {
         val now = System.currentTimeMillis()
+        showLoginMessage(R.string.pv_login_verify_email)
         if (now - prefs.getLong(KEY_LAST_VERIFICATION, 0L) in 0 until VERIFICATION_COOLDOWN) {
             if (auth.currentUser?.uid == user.uid) auth.signOut()
-            Toast.makeText(context, "Verify your email before signing in.", Toast.LENGTH_LONG).show()
             return
         }
         prefs.edit().putLong(KEY_LAST_VERIFICATION, now).apply()
         loginButton.isEnabled = false
+        loginButton.setText(R.string.pv_login_sending_link)
         user.sendEmailVerification().addOnCompleteListener { task ->
             if (auth.currentUser?.uid == user.uid) auth.signOut()
             if (view == null) return@addOnCompleteListener
-            loginButton.isEnabled = !isLockedOut
+            resetLoginButton()
             val message = if (task.isSuccessful) "Check your inbox for a verification link."
                 else "Verify your email before signing in. You can try again shortly."
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun resetLoginButton() {
+        loginButton.isEnabled = !isLockedOut
+        loginButton.setText(R.string.pv_login_txt)
+    }
+
+    private fun showLoginMessage(message: Int) {
+        attemptsWarning?.apply {
+            setText(message)
+            visibility = View.VISIBLE
+        } ?: Toast.makeText(context, message, Toast.LENGTH_LONG).show()
     }
 
     private fun handleFailedLogin() {
@@ -265,6 +306,7 @@ class LoginFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        loginButton.removeCallbacks(showSlowSignIn)
         super.onDestroyView()
         lockoutTimer?.cancel()
         // FLAG_SECURE is cleared in onPause() — Bug 13 fix.

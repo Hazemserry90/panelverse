@@ -21,15 +21,8 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/pv_your_library"
-            android:textAppearance="@style/TextAppearance.PanelVerse.Label"
-            android:textColor="@color/accent_cyan" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="@string/pv_saved"
+            android:text="@string/pv_library"
             android:textAppearance="@style/TextAppearance.PanelVerse.Display"
             android:textSize="30sp" />
 
@@ -47,6 +40,38 @@
         android:layout_marginStart="@dimen/screen_padding_h"
         android:layout_marginEnd="@dimen/screen_padding_h"
         android:background="@color/divider" />
+
+    <com.google.android.material.tabs.TabLayout
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/savedListTabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_dark"
+        app:tabMode="scrollable"
+        app:tabIndicatorColor="@color/accent_ink"
+        app:tabSelectedTextColor="@color/text_primary"
+        app:tabTextColor="@color/text_secondary" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/savedFormat"
+            style="@style/Widget.PanelVerse.Button.Outlined"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/savedSort"
+            style="@style/Widget.PanelVerse.Button.Outlined"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1" />
+    </LinearLayout>
 
     <!-- Empty state (text set by the fragment) -->
     <TextView

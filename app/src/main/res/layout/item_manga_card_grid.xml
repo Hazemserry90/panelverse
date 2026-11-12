@@ -26,19 +26,29 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <TextView
+        <FrameLayout
             android:id="@+id/mangaFavorite"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="@drawable/bg_ink_caption"
             android:clickable="true"
             android:contentDescription="@string/pv_toggle_favourite"
             android:focusable="true"
-            android:gravity="center"
-            android:textColor="#121212"
-            android:textSize="22sp"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                android:id="@+id/mangaFavoriteGlyph"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="3dp"
+                android:layout_marginEnd="3dp"
+                android:background="@drawable/bg_ink_caption"
+                android:gravity="center"
+                android:importantForAccessibility="no"
+                android:textColor="#121212"
+                android:textSize="16sp" />
+        </FrameLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <View
@@ -54,6 +64,7 @@
         android:ellipsize="end"
         android:fontFamily="sans-serif-condensed"
         android:lines="2"
+        android:paddingBottom="4dp"
         android:paddingStart="6dp"
         android:paddingTop="4dp"
         android:paddingEnd="6dp"
@@ -61,16 +72,4 @@
         android:textSize="14sp"
         android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/mangaCategory"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="4dp"
-        android:background="@drawable/bg_ink_caption"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:paddingHorizontal="4dp"
-        android:paddingVertical="2dp"
-        android:textColor="#121212"
-        android:textSize="11sp" />
 </LinearLayout>

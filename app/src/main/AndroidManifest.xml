@@ -38,6 +38,9 @@
             android:name=".OfflineActivity"
             android:exported="false" />
         <activity
+            android:name=".NativeReaderActivity"
+            android:exported="false" />
+        <activity
             android:name=".ReaderActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize"
