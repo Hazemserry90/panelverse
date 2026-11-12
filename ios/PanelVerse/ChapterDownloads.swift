@@ -100,7 +100,11 @@ final class ChapterDownloads: ObservableObject {
     @Published private(set) var failure: String?
     private var task: Task<Void, Never>?
 
-    func start(_ source: ReaderDownloadSource, library: LibraryStore) {
+    func start(_ source: ReaderDownloadSource, library: LibraryStore, account: AccountStore) {
+        guard let userID = account.currentUserID else {
+            failure = "Sign in to download chapters and issues."
+            return
+        }
         let chapter = source.chapter
         guard active == nil, !library.books.contains(where: { $0.source == chapter.address }) else { return }
         failure = nil
@@ -115,10 +119,11 @@ final class ChapterDownloads: ObservableObject {
             do {
                 let pages = try await source.pages()
                 try Task.checkCancellation()
+                guard account.currentUserID == userID else { return }
                 let book = try await ComicArchive.download(chapter, pages: pages) { [weak self] percent in
                     self?.percent = percent
                 }
-                if Task.isCancelled { try ComicArchive.remove(book) }
+                if Task.isCancelled || account.currentUserID != userID { try ComicArchive.remove(book) }
                 else { library.add(book) }
             } catch let error as ChapterDownloadError {
                 if !Task.isCancelled { failure = error.localizedDescription }

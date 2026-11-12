@@ -110,6 +110,7 @@ class SeriesActivity : AppCompatActivity() {
             ComicWebData.issues(this, series)?.let(::renderListing)
         }
         bindRead()
+        downloadRows.forEach { (name, button) -> renderDownload(name, button) }
         val user = FirebaseAuth.getInstance().currentUser
         if (user == null) {
             saveButton.isEnabled = false
@@ -264,13 +265,19 @@ class SeriesActivity : AppCompatActivity() {
                         WorkManager.getInstance(this@SeriesActivity).cancelWorkById(active.id)
                         renderDownload(name, this)
                     } else if (book.isFile) openChapter(chapter)
-                    else if (comics) ReaderActivity.open(this@SeriesActivity, series, chapter.url,
+                    else if (FirebaseAuth.getInstance().currentUser == null) {
+                        Toast.makeText(this@SeriesActivity, R.string.pv_download_sign_in, Toast.LENGTH_SHORT).show()
+                    } else if (comics) ReaderActivity.open(this@SeriesActivity, series, chapter.url,
                         downloadTitle = chapter.title, lastIssue = isFinalChapter(chapter))
                     else {
-                        startedDownloads.add(name)
-                        ChapterDownloadWorker.enqueue(this@SeriesActivity, series, chapter, isFinalChapter(chapter))
-                        isEnabled = false
-                        setText(R.string.pv_download_queued)
+                        val work = ChapterDownloadWorker.enqueue(this@SeriesActivity, series, chapter, isFinalChapter(chapter))
+                        if (work == null) {
+                            Toast.makeText(this@SeriesActivity, R.string.pv_download_sign_in, Toast.LENGTH_SHORT).show()
+                        } else {
+                            startedDownloads.add(work)
+                            isEnabled = false
+                            setText(R.string.pv_download_queued)
+                        }
                     }
                 }
             }
@@ -295,6 +302,7 @@ class SeriesActivity : AppCompatActivity() {
                 active.progress.getInt(ChapterDownloadWorker.PERCENT, 0))
             active != null -> getString(R.string.pv_download_cancel)
             book.isFile -> getString(R.string.pv_chapter_offline)
+            FirebaseAuth.getInstance().currentUser == null -> getString(R.string.pv_download_sign_in)
             else -> getString(R.string.pv_chapter_download)
         }
         val stopped = jobs.firstOrNull { it.state.isFinished && it.id in cancellingDownloads }

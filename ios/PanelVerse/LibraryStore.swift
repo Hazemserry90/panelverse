@@ -10,6 +10,13 @@ struct Series: Decodable, Hashable, Identifiable {
 
     var isManga: Bool { category == "Manga" }
     var provider: String { address.host?.replacingOccurrences(of: "www.", with: "") ?? "" }
+    var chapterListAddress: URL {
+        var components = URLComponents(url: address, resolvingAgainstBaseURL: false)
+        components?.path = "/" + address.pathComponents.dropFirst().prefix(2).joined(separator: "/")
+        components?.query = nil
+        components?.fragment = nil
+        return components?.url ?? address
+    }
 
     func allows(_ url: URL) -> Bool {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),

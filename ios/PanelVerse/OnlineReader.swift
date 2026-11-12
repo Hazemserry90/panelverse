@@ -4,9 +4,11 @@ import WebKit
 @MainActor
 struct OnlineReaderScreen: View {
     let series: Series
+    var browseForDownload = false
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var library: LibraryStore
     @EnvironmentObject private var downloads: ChapterDownloads
+    @EnvironmentObject private var account: AccountStore
     @State private var start: ReadingPosition?
     @State private var ready = false
     @State private var error = false
@@ -14,13 +16,16 @@ struct OnlineReaderScreen: View {
     @State private var reload = 0
     @State private var zoom: CGFloat = 1
     @State private var downloadSource: ReaderDownloadSource?
+    @State private var showAccount = false
+
+    private var entryAddress: URL { browseForDownload ? series.chapterListAddress : series.address }
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Ink.background.ignoresSafeArea()
                 if ready {
-                    ProviderWebView(series: series, initial: start, zoom: zoom, loading: $loading, failed: $error,
+                    ProviderWebView(series: series, entryAddress: entryAddress, initial: start, zoom: zoom, loading: $loading, failed: $error,
                                     onDownloadSource: { downloadSource = $0 }) {
                         library.remember(series, address: $0, scroll: $1)
                     }
@@ -33,7 +38,7 @@ struct OnlineReaderScreen: View {
                         Button("Retry") {
                             error = false
                             loading = true
-                            start = library.position(series)
+                            start = browseForDownload ? nil : library.position(series)
                             reload += 1
                         }
                         .buttonStyle(.borderedProminent)
@@ -43,23 +48,18 @@ struct OnlineReaderScreen: View {
                     ProgressView().padding(16).background(Ink.background).allowsHitTesting(false)
                 }
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) { DownloadStatus() }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) {
+                    DownloadStatus()
+                    if !loading && !error {
+                        downloadControls
+                    }
+                }
+            }
             .navigationTitle(series.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
-                ToolbarItem(placement: .primaryAction) {
-                    if let downloadSource {
-                        let saved = library.books.contains { $0.source == downloadSource.chapter.address }
-                        Button {
-                            downloads.start(downloadSource, library: library)
-                        } label: {
-                            Label(saved ? "Available offline" : (series.isManga ? "Download chapter" : "Download issue"),
-                                  systemImage: saved ? "checkmark.circle" : "arrow.down.circle")
-                        }
-                        .disabled(saved || downloads.active != nil)
-                    }
-                }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
@@ -81,9 +81,36 @@ struct OnlineReaderScreen: View {
         }
         .onAppear {
             if !ready {
-                start = library.position(series)
+                start = browseForDownload ? nil : library.position(series)
                 ready = true
             }
+        }
+        .sheet(isPresented: $showAccount) { AccountScreen() }
+    }
+
+    @ViewBuilder private var downloadControls: some View {
+        if let source = downloadSource {
+            let saved = library.books.contains { $0.source == source.chapter.address }
+            let guest = account.userID == nil
+            let label = saved ? "Available offline" :
+                (guest ? "Sign in to download" : (series.isManga ? "Download chapter" : "Download issue"))
+            Button {
+                if account.currentUserID == nil { showAccount = true }
+                else { downloads.start(source, library: library, account: account) }
+            } label: {
+                Label(label, systemImage: saved ? "checkmark.circle" : (guest ? "lock" : "arrow.down.circle"))
+                    .frame(maxWidth: .infinity, minHeight: 36)
+            }
+            .buttonStyle(.bordered)
+            .disabled(saved || (!guest && downloads.active != nil))
+            .padding(8)
+            .background(Ink.background)
+        } else if browseForDownload {
+            Text(series.isManga ? "Choose a chapter to download." : "Choose an issue to download.")
+                .font(.subheadline)
+                .frame(maxWidth: .infinity)
+                .padding(12)
+                .background(Ink.background)
         }
     }
 }
@@ -91,6 +118,7 @@ struct OnlineReaderScreen: View {
 @MainActor
 private struct ProviderWebView: UIViewRepresentable {
     let series: Series
+    let entryAddress: URL
     let initial: ReadingPosition?
     let zoom: CGFloat
     @Binding var loading: Bool
@@ -108,7 +136,7 @@ private struct ProviderWebView: UIViewRepresentable {
         view.scrollView.delegate = context.coordinator
         view.isOpaque = false
         view.backgroundColor = .black
-        let target = initial.flatMap { series.contains($0.address) ? $0.address : nil } ?? series.address
+        let target = initial.flatMap { series.contains($0.address) ? $0.address : nil } ?? entryAddress
         context.coordinator.open(view, at: target)
         return view
     }

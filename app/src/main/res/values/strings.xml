@@ -164,6 +164,7 @@
     <string name="pv_chapter_more">Show more chapters</string>
     <string name="pv_chapter_number">Chapter %1$s</string>
     <string name="pv_chapter_download">Download</string>
+    <string name="pv_download_sign_in">Sign in to download</string>
     <string name="pv_chapter_offline">Open offline</string>
     <string name="pv_download_queued">Download queued</string>
     <string name="pv_download_failed">The chapter couldn’t be downloaded. Tap Download to try again.</string>

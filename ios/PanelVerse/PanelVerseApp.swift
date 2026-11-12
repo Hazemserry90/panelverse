@@ -38,6 +38,7 @@ struct PanelVerseApp: App {
             .tint(Ink.accent)
             .preferredColorScheme(.dark)
             .task { account.start() }
+            .onChange(of: account.userID) { _ in downloads.cancel() }
         }
     }
 }

@@ -129,7 +129,14 @@ struct Cover: View {
 struct SeriesScreen: View {
     let series: Series
     @EnvironmentObject private var library: LibraryStore
-    @State private var showReader = false
+    @EnvironmentObject private var account: AccountStore
+    @State private var readerMode: ReaderMode?
+    @State private var showAccount = false
+
+    private enum ReaderMode: String, Identifiable {
+        case read, download
+        var id: Self { self }
+    }
 
     var body: some View {
         ScrollView {
@@ -146,13 +153,22 @@ struct SeriesScreen: View {
                 Text(series.title).font(.largeTitle.weight(.black))
                 Text(series.provider).foregroundStyle(.secondary)
                 Button {
-                    showReader = true
+                    readerMode = .read
                 } label: {
                     Text(library.position(series) == nil ? "Start reading" : "Resume reading")
                         .font(.headline)
                         .frame(maxWidth: .infinity, minHeight: 36)
                 }
                 .buttonStyle(.borderedProminent)
+                Button {
+                    if account.currentUserID != nil { readerMode = .download }
+                    else { showAccount = true }
+                } label: {
+                    Label(account.userID == nil ? "Sign in to download" : (series.isManga ? "Download chapters" : "Download issues"),
+                          systemImage: account.userID == nil ? "lock" : "arrow.down.circle")
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                }
+                .buttonStyle(.bordered)
                 HStack {
                     Button {
                         library.toggleFavorite(series)
@@ -181,9 +197,10 @@ struct SeriesScreen: View {
         }
         .background(Ink.background)
         .navigationBarTitleDisplayMode(.inline)
-        .fullScreenCover(isPresented: $showReader) {
-            OnlineReaderScreen(series: series)
+        .fullScreenCover(item: $readerMode) { mode in
+            OnlineReaderScreen(series: series, browseForDownload: mode == .download)
         }
+        .sheet(isPresented: $showAccount) { AccountScreen() }
     }
 }
 

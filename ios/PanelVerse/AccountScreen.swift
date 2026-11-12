@@ -19,8 +19,10 @@ final class AccountStore: ObservableObject {
     @Published private(set) var ready = false
     @Published private(set) var available = false
     @Published private(set) var email: String?
+    @Published private(set) var userID: String?
     @Published private(set) var verified = false
     private var auth: Auth?
+    var currentUserID: String? { auth?.currentUser?.uid }
 
     func start() {
         guard !ready, auth == nil else { return }
@@ -76,6 +78,7 @@ final class AccountStore: ObservableObject {
 
     private func update() {
         email = auth?.currentUser?.email
+        userID = currentUserID
         verified = auth?.currentUser?.isEmailVerified ?? false
     }
 }
