@@ -54,7 +54,8 @@ final class AccountStore: ObservableObject {
 
     func sendReset(to email: String) async throws {
         guard let auth else { throw AccountError.unavailable }
-        try await auth.sendPasswordReset(withEmail: email)
+        do { try await auth.sendPasswordReset(withEmail: email) }
+        catch where AccountError.firebaseCode(error) == .userNotFound { return }
     }
 
     func resendVerification() async throws {
@@ -86,6 +87,41 @@ private enum AccountError: LocalizedError {
         switch self {
         case .unavailable: return "Account services are unavailable."
         case .verificationDelivery: return "Your account was created. Tap Resend verification email to try sending the link again."
+        }
+    }
+
+    static func firebaseCode(_ error: Error) -> AuthErrorCode? {
+        let details = error as NSError
+        guard details.domain == AuthErrorDomain else { return nil }
+        return AuthErrorCode(rawValue: details.code)
+    }
+
+    static func message(for error: Error, fallback: String) -> String {
+        if let local = error as? AccountError { return local.localizedDescription }
+        guard let code = firebaseCode(error) else { return fallback }
+
+        switch code {
+        case .networkError:
+            return "Couldn’t reach the account service. Check your internet connection and try again."
+        case .tooManyRequests:
+            return "There have been too many attempts. Wait a while before trying again."
+        case .operationNotAllowed:
+            return "Email and password accounts are disabled for this Firebase project. (\(code.rawValue))"
+        case .invalidEmail:
+            return "Enter a valid email address."
+        case .weakPassword, .passwordDoesNotMeetRequirements:
+            return "This password doesn’t meet the account service’s requirements. Try a longer password with uppercase and lowercase letters, numbers, and symbols."
+        case .keychainError:
+            return "PanelVerse couldn’t save your session in the iPhone Keychain. Check the app’s signing before retrying. (\(code.rawValue))"
+        case .appNotAuthorized, .invalidAPIKey, .internalError:
+            if let expected = FirebaseApp.app()?.options.bundleID,
+               let installed = Bundle.main.bundleIdentifier, expected != installed {
+                return "The installed app’s bundle ID differs from its Firebase configuration. Reinstall using the original bundle ID. (\(code.rawValue))"
+            }
+            if code == .internalError { return "\(fallback) (Firebase \(code.rawValue))" }
+            return "Firebase rejected this build’s app configuration. Check the iOS API key and bundle ID. (\(code.rawValue))"
+        default:
+            return fallback
         }
     }
 }
@@ -134,7 +170,7 @@ struct AccountScreen: View {
                     }
                     Button("Sign out", role: .destructive) {
                         do { try account.signOut() }
-                        catch { message = "Couldn’t sign out. Try again." }
+                        catch { message = AccountError.message(for: error, fallback: "Couldn’t sign out. Try again.") }
                     }
                 } else {
                     Section {
@@ -154,7 +190,7 @@ struct AccountScreen: View {
                         if create { Text("Use at least 8 characters, with uppercase and lowercase letters, a number, and a symbol.") }
                     }
                     Button(create ? "Create account" : "Sign in") {
-                        perform(failure: create ? "Couldn’t create your account. Check your details and try again." :
+                        perform(failure: create ? "Couldn’t create your account. If you already have an account, try signing in or resetting your password." :
                                                   "Couldn’t sign in. Check your email and password and try again.") {
                             try await account.authenticate(email: address, password: password, create: create)
                             clearPasswords()
@@ -205,8 +241,7 @@ struct AccountScreen: View {
         Task {
             defer { busy = false }
             do { try await action() }
-            catch let error as AccountError { message = error.localizedDescription }
-            catch { message = failure }
+            catch { message = AccountError.message(for: error, fallback: failure) }
             if account.email != nil { clearPasswords() }
         }
     }
