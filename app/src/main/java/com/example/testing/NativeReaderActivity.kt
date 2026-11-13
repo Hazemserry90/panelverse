@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
 import java.io.File
 import java.io.IOException
 import java.util.zip.ZipFile
@@ -254,7 +255,11 @@ class NativeReaderActivity : AppCompatActivity() {
         val zoomIn = popup.menu.add(R.string.pv_reader_zoom_in)
         val zoomOut = popup.menu.add(R.string.pv_reader_zoom_out)
         val web = popup.menu.add(R.string.pv_chapter_web)
-        val download = popup.menu.add(R.string.pv_chapter_download)
+        val download = popup.menu.add(if (FirebaseAuth.getInstance().currentUser == null) {
+            R.string.pv_download_sign_in
+        } else {
+            R.string.pv_chapter_download
+        })
         val chapters = popup.menu.add(if (series.category == "Manga") R.string.pv_chapters_heading else R.string.pv_issues_heading)
         download.isEnabled = pages.isNotEmpty() && archive == null
         popup.setOnMenuItemClickListener { item ->
@@ -278,7 +283,11 @@ class NativeReaderActivity : AppCompatActivity() {
         val work = ChapterDownloadWorker.enqueue(this, series,
             ProviderChapters.Chapter(intent.getStringExtra("label").orEmpty(), chapter),
             intent.getBooleanExtra("last", false))
-        showChapterDownloadProgress(this, work, library.chapterBook(series, chapter))
+        if (work == null) {
+            Toast.makeText(this, R.string.pv_download_sign_in, Toast.LENGTH_SHORT).show()
+        } else {
+            showChapterDownloadProgress(this, work, library.chapterBook(series, chapter))
+        }
     }
 
     private fun chooseDirection() {

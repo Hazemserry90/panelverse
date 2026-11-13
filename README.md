@@ -13,7 +13,7 @@ For other versions, see [GitHub Releases](https://github.com/Hazemserry90/panelv
 
 ## iPhone and iPad
 
-**iPhone and iPad testing is pending.** The invitation link will appear here when the beta opens. You’ll need **iOS 17 or iPadOS 17 or newer**.
+**iPhone and iPad testing is pending.** The invitation link will appear here when the beta opens. You’ll need **iOS 16 or iPadOS 16 or newer**.
 
 When you have an invitation:
 
@@ -79,6 +79,31 @@ Release builds use your local `keystore.properties`, or an external file selecte
 3. For a physical device, connect it and choose your Apple development team in **Signing & Capabilities**. Select the device as the run destination and press **Run**. Change the bundle identifier if your team needs a unique one.
 
 ### iPhone and iPad from Windows with Codemagic
+
+#### Free testing on your own iPhone or iPad
+
+1. Add the PanelVerse repository to a personal Codemagic account. Its free plan includes 500 macOS M2 build minutes per month. [Codemagic pricing](https://docs.codemagic.io/billing/pricing/)
+2. Start a build on the branch containing this workflow and choose **PanelVerse iOS personal device**. When it succeeds, download **PanelVerse-unsigned.ipa** under **Artifacts**.
+3. Install Sideloadly on your Windows PC, connect and unlock your device, and tap **Trust** if prompted. Select the IPA and your device in Sideloadly, then click **Start** and follow the prompts to sign it with your free Apple Account. [Sideloadly download and setup](https://sideloadly.io/)
+4. If prompted on iOS 16, enable **Settings → Privacy & Security → Developer Mode**, restart, and confirm. If iOS asks you to trust the developer, go to **Settings → General → VPN & Device Management** and trust your Apple Account under **Developer App**. Open PanelVerse. [Apple Developer Mode guide](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device)
+
+Free personal signing expires after seven days. Use the same Apple Account to refresh the install from Windows. [Apple developer account limits](https://developer.apple.com/help/account/basics/about-your-developer-account)
+
+#### Test iPhone sign-in and sign-up
+
+1. In the Firebase project used by Android, register an iOS app with bundle ID `com.hazemserry.panelverse`. Download its `GoogleService-Info.plist` and confirm **Authentication → Sign-in method → Email/Password** is enabled. [Firebase setup for iOS](https://firebase.google.com/docs/ios/setup)
+2. From the folder where you downloaded the file, run this in PowerShell to copy its Base64 value to your clipboard.
+
+   ```powershell
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path .\GoogleService-Info.plist).Path)) | Set-Clipboard
+   ```
+
+3. In Codemagic, open the PanelVerse app’s **Environment variables**. Create a secret variable named `PANELVERSE_FIREBASE_IOS_PLIST` in the group `panelverse_firebase_ios`, then paste the clipboard value. Run **PanelVerse iOS personal device with accounts**.
+4. Install the resulting IPA with the same sideloading account as before and keep the same app bundle identifier in Sideloadly. Tap the person icon on **Home** to sign in or create an account.
+
+For a local Xcode build, put the same plist in `ios/PanelVerse`. Account sign-in uses Firebase email and password. Favorites, reading lists, and offline downloads are stored on the device.
+
+#### Simulator and TestFlight workflows
 
 1. Connect the PanelVerse GitHub repository in Codemagic and select the branch with `codemagic.yaml`.
 2. Run **PanelVerse iOS simulator** to compile the app and launch it on a hosted iPhone simulator. The build provides a screenshot and simulator app under **Artifacts**. [Codemagic iOS build guide](https://docs.codemagic.io/yaml-quick-start/building-a-native-ios-app/)

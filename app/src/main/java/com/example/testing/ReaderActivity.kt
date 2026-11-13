@@ -29,6 +29,7 @@ import androidx.activity.addCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -183,7 +184,7 @@ class ReaderActivity : AppCompatActivity() {
                 val blocked = if (initialProvider == "mangakatana.com") {
                     ReaderAdHosts.blocksMangaKatanaResource(url.host, url.path, request.requestHeaders)
                 } else {
-                    ReaderAdHosts.blocks(url.host)
+                    ReaderAdHosts.blocksComicResource(url.host, url.path, request.requestHeaders)
                 }
                 if (!blocked) return null
                 return WebResourceResponse(
@@ -193,7 +194,17 @@ class ReaderActivity : AppCompatActivity() {
             }
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                if (!request.isForMainFrame) return false
+                if (!request.isForMainFrame) {
+                    if (!blockAds) return false
+                    val url = request.url
+                    if (url.scheme != "http" && url.scheme != "https") return url.scheme != "about"
+                    val headers = mapOf("Sec-Fetch-Dest" to "iframe")
+                    return if (initialProvider == "mangakatana.com") {
+                        ReaderAdHosts.blocksMangaKatanaResource(url.host, url.path, headers)
+                    } else {
+                        ReaderAdHosts.blocksComicResource(url.host, url.path, headers)
+                    }
+                }
                 if (providerFor(request.url.toString()) == provider) {
                     saveProgress()
                     return false
@@ -303,8 +314,13 @@ class ReaderActivity : AppCompatActivity() {
             val browser = popup.menu.add(R.string.pv_open_in_browser)
             val zoomIn = popup.menu.add(R.string.pv_reader_zoom_in)
             val zoomOut = popup.menu.add(R.string.pv_reader_zoom_out)
-            val download = if (entry != null && initialProvider == "readcomicsonline.ru")
-                popup.menu.add(R.string.pv_download_issue) else null
+            val download = if (entry != null && initialProvider == "readcomicsonline.ru") {
+                popup.menu.add(if (FirebaseAuth.getInstance().currentUser == null) {
+                    R.string.pv_download_sign_in
+                } else {
+                    R.string.pv_download_issue
+                })
+            } else null
             val blocker = popup.menu.add(R.string.pv_ink_block_ads).apply {
                 isCheckable = true
                 isChecked = blockAds
@@ -361,6 +377,11 @@ class ReaderActivity : AppCompatActivity() {
     }
 
     private fun collectComicDownload(series: MangaItem, label: String? = null, lastIssue: Boolean = false) {
+        val owner = FirebaseAuth.getInstance().currentUser?.uid
+        if (owner == null) {
+            Toast.makeText(this, R.string.pv_download_sign_in, Toast.LENGTH_SHORT).show()
+            return
+        }
         val url = loadedUrl
         val canonical = ProviderChapters.chapterUrl(series, url)
         if (url == null || canonical == null || failed) {
@@ -383,14 +404,19 @@ class ReaderActivity : AppCompatActivity() {
             .show()
         preparingDownload = dialog
         dialog.setOnDismissListener { if (preparingDownload === dialog) preparingDownload = null }
-        collectComicPages(series, chapter, url, book, lastIssue, dialog, attempts = 12)
+        collectComicPages(series, chapter, url, book, lastIssue, dialog, owner, attempts = 12)
     }
 
     private fun collectComicPages(
         series: MangaItem, chapter: ProviderChapters.Chapter, url: String,
-        book: java.io.File, lastIssue: Boolean, dialog: AlertDialog, attempts: Int
+        book: java.io.File, lastIssue: Boolean, dialog: AlertDialog, owner: String, attempts: Int
     ) {
         if (isFinishing || isDestroyed || loadedUrl != url || preparingDownload !== dialog || !dialog.isShowing) return
+        if (FirebaseAuth.getInstance().currentUser?.uid != owner) {
+            dialog.dismiss()
+            Toast.makeText(this, R.string.pv_download_sign_in, Toast.LENGTH_SHORT).show()
+            return
+        }
         runPageScript("comic-pages", url) { result ->
             lifecycleScope.launch {
                 if (preparingDownload !== dialog || !dialog.isShowing) return@launch
@@ -399,11 +425,15 @@ class ReaderActivity : AppCompatActivity() {
                 when {
                     stored -> {
                         dialog.dismiss()
-                        val work = ChapterDownloadWorker.enqueue(this@ReaderActivity, series, chapter, lastIssue)
-                        showChapterDownloadProgress(this@ReaderActivity, work, book)
+                        val work = ChapterDownloadWorker.enqueue(this@ReaderActivity, series, chapter, lastIssue, owner)
+                        if (work == null) {
+                            Toast.makeText(this@ReaderActivity, R.string.pv_download_sign_in, Toast.LENGTH_SHORT).show()
+                        } else {
+                            showChapterDownloadProgress(this@ReaderActivity, work, book)
+                        }
                     }
                     attempts > 1 -> webView.postDelayed({
-                        collectComicPages(series, chapter, url, book, lastIssue, dialog, attempts - 1)
+                        collectComicPages(series, chapter, url, book, lastIssue, dialog, owner, attempts - 1)
                     }, 500)
                     else -> {
                         dialog.dismiss()

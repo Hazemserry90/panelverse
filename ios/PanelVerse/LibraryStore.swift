@@ -5,11 +5,30 @@ struct Series: Decodable, Hashable, Identifiable {
     let id: String
     let title: String
     let category: String
-    let cover: String
+    let cover: String?
     let address: URL
 
     var isManga: Bool { category == "Manga" }
     var provider: String { address.host?.replacingOccurrences(of: "www.", with: "") ?? "" }
+    static func readerPath(_ url: URL) -> [String] {
+        guard let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedPath else { return [] }
+        var components: [String] = []
+        for segment in path.split(separator: "/") {
+            guard let decoded = String(segment).removingPercentEncoding,
+                  decoded != ".", decoded != "..", !decoded.contains("/"), !decoded.contains("\\"),
+                  decoded.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) }) else { return [] }
+            components.append(decoded)
+        }
+        return components
+    }
+
+    var chapterListAddress: URL {
+        var components = URLComponents(url: address, resolvingAgainstBaseURL: false)
+        components?.path = "/" + Self.readerPath(address).prefix(2).joined(separator: "/")
+        components?.query = nil
+        components?.fragment = nil
+        return components?.url ?? address
+    }
 
     func allows(_ url: URL) -> Bool {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
@@ -20,17 +39,18 @@ struct Series: Decodable, Hashable, Identifiable {
 
     func contains(_ url: URL) -> Bool {
         guard allows(url) else { return false }
-        let root = address.pathComponents.prefix(3)
-        guard url.pathComponents.starts(with: root), url.pathComponents.count <= 4 else { return false }
-        if id == "bleachtybw", url.pathComponents.count == 4 {
-            guard let chapter = Double(url.lastPathComponent.dropFirst()) else { return false }
+        let root = Self.readerPath(address).prefix(2)
+        let path = Self.readerPath(url)
+        guard root.count == 2, path.starts(with: root), path.count <= 3 else { return false }
+        if id == "bleachtybw", path.count == 3 {
+            guard let segment = path.last, let chapter = Double(segment.dropFirst()) else { return false }
             return (480...686).contains(chapter)
         }
         return true
     }
 
     func isChapter(_ url: URL) -> Bool {
-        contains(url) && url.pathComponents.count == 4
+        contains(url) && Self.readerPath(url).count == 3
     }
 
     static let catalog: [Series] = {
@@ -52,12 +72,15 @@ struct ReadingPosition: Codable {
     let address: URL
     let scroll: Double
     let updatedAt: Date
+    var pageIndex: Int? = nil
 }
 
-struct OfflineBook: Codable, Identifiable, Hashable {
+struct OfflineBook: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     let title: String
     let pageCount: Int
+    var source: URL? = nil
+    var seriesID: String? = nil
 }
 
 @MainActor
@@ -76,6 +99,12 @@ final class LibraryStore: ObservableObject {
     init() {
         let stored = UserDefaults.standard.data(forKey: Self.key)
         record = stored.flatMap { try? JSONDecoder().decode(Record.self, from: $0) } ?? Record()
+        let knownIDs = Set(record.books.map(\.id))
+        let recovered = ComicArchive.restoreDownloads(excluding: knownIDs)
+        if !recovered.isEmpty {
+            record.books.insert(contentsOf: recovered, at: 0)
+            persist()
+        }
     }
 
     var books: [OfflineBook] { record.books }
@@ -101,9 +130,10 @@ final class LibraryStore: ObservableObject {
         persist()
     }
 
-    func remember(_ series: Series, address: URL, scroll: Double) {
+    func remember(_ series: Series, address: URL, scroll: Double, pageIndex: Int? = nil) {
         guard series.isChapter(address), scroll.isFinite else { return }
-        record.positions[series.id] = ReadingPosition(address: address, scroll: max(0, scroll), updatedAt: .now)
+        record.positions[series.id] = ReadingPosition(address: address, scroll: max(0, scroll), updatedAt: .now,
+                                                      pageIndex: pageIndex)
         if record.lists[series.id] != .finished { record.lists[series.id] = .reading }
         persist()
     }
@@ -121,7 +151,11 @@ final class LibraryStore: ObservableObject {
     }
 
     func page(_ book: OfflineBook) -> Int {
-        min(max(record.offlinePositions[book.id] ?? 0, 0), max(book.pageCount - 1, 0))
+        rememberedPage(book) ?? 0
+    }
+
+    func rememberedPage(_ book: OfflineBook) -> Int? {
+        record.offlinePositions[book.id].map { min(max($0, 0), max(book.pageCount - 1, 0)) }
     }
 
     func rememberPage(_ index: Int, of book: OfflineBook) {

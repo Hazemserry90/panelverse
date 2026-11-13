@@ -29,4 +29,21 @@ class ReaderAdHostsTest {
         assertTrue(ReaderAdHosts.blocksMangaKatanaResource("www.google.com", "/other", emptyMap()))
         assertTrue(ReaderAdHosts.blocksMangaKatanaResource("challenges.cloudflare.com.example", "/challenge", emptyMap()))
     }
+
+    @Test
+    fun comicsBlockExternalScriptsAndFramesWhileKeepingPagesAndRequiredAssets() {
+        val script = mapOf("Sec-Fetch-Dest" to "script")
+        val iframe = mapOf("Sec-Fetch-Dest" to "iframe")
+        val image = mapOf("Sec-Fetch-Dest" to "image")
+        assertTrue(ReaderAdHosts.blocksComicResource("rotating-ad.example", "/widget", script))
+        assertTrue(ReaderAdHosts.blocksComicResource("rotating-ad.example", "/frame", iframe))
+        assertTrue(ReaderAdHosts.blocksComicResource("rotating-ad.example", "/widget.mjs", emptyMap()))
+        assertTrue(ReaderAdHosts.blocksComicResource("readcomicsonline.ru.example", "/widget.js", script))
+        assertTrue(ReaderAdHosts.blocksComicResource("img.inspiredot.net", "/ad.jpg", image))
+        assertFalse(ReaderAdHosts.blocksComicResource("www.readcomicsonline.ru", "/reader.js", script))
+        assertFalse(ReaderAdHosts.blocksComicResource("page-server.example", "/page/1", image))
+        assertFalse(ReaderAdHosts.blocksComicResource("challenges.cloudflare.com", "/challenge", iframe))
+        assertFalse(ReaderAdHosts.blocksComicResource("code.jquery.com", "/jquery-3.7.1.min.js", script))
+        assertTrue(ReaderAdHosts.blocksComicResource("code.jquery.com.example", "/jquery-3.7.1.min.js", script))
+    }
 }
