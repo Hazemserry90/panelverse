@@ -9,6 +9,10 @@ enum ComicArchive {
     private static let expandedLimit: UInt64 = 512 * 1024 * 1024
     private static let imageTypes = ["jpg": "public.jpeg", "jpeg": "public.jpeg",
                                      "png": "public.png", "webp": "org.webmproject.webp"]
+    private static let activeTypes: Set<String> = [
+        "apk", "bat", "cmd", "com", "dex", "dll", "exe", "hta", "html", "htm",
+        "jar", "js", "lnk", "msi", "ps1", "scr", "sh", "svg", "vbs"
+    ]
     private static let readerSession = pageSession()
 
     enum ImportError: LocalizedError {
@@ -96,7 +100,7 @@ enum ComicArchive {
         return UIImage(cgImage: thumbnail)
     }
 
-    static func download(_ chapter: DownloadChapter, pages: [URL],
+    static func download(_ chapter: DownloadChapter, pages: [URL], finalEntry: Bool,
                          progress: @MainActor @Sendable (Int) -> Void) async throws -> OfflineBook {
         guard (1...1000).contains(pages.count), pages.allSatisfy(chapter.allowsImage) else {
             throw ChapterDownloadError.pagesUnavailable
@@ -145,7 +149,7 @@ enum ComicArchive {
         let verified = try Archive(url: file, accessMode: .read)
         guard try entries(in: verified).count == pages.count else { throw ImportError.invalid }
         let book = OfflineBook(id: id, title: chapter.title, pageCount: pages.count,
-                               source: chapter.address, seriesID: chapter.seriesID)
+                               source: chapter.address, seriesID: chapter.seriesID, finalEntry: finalEntry)
         try JSONEncoder().encode(book).write(to: staging.appendingPathComponent("info.json"), options: .atomic)
         try Task.checkCancellation()
         try FileManager.default.moveItem(at: staging, to: downloadDirectory(id, in: folder))
@@ -243,12 +247,13 @@ enum ComicArchive {
             guard !path.isEmpty, path.utf8.count <= 1024, item.type != .symlink,
                   !path.contains("\\"), !path.contains(":"),
                   path.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) && $0.properties.generalCategory != .format }),
-                  components.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && !$0.hasSuffix(".") }),
+                  components.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." &&
+                      !$0.hasSuffix(".") && $0.last?.isWhitespace == false }),
                   paths.insert(path.precomposedStringWithCanonicalMapping.lowercased()).inserted else {
                 throw ImportError.invalid
             }
             let ext = (path as NSString).pathExtension.lowercased()
-            if ["html", "htm", "js", "svg", "exe", "apk", "bat", "cmd", "sh", "ps1"].contains(ext) {
+            if item.type == .file, activeTypes.contains(ext) {
                 throw ImportError.invalid
             }
             guard item.type == .file, imageTypes[ext] != nil, components.first != "__MACOSX",

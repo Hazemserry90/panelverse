@@ -109,7 +109,7 @@ Free personal signing expires after seven days. Use the same Apple Account to re
 3. In Codemagic, open the PanelVerse app’s **Environment variables**. Create a secret variable named `PANELVERSE_FIREBASE_IOS_PLIST` in the group `panelverse_firebase_ios`, then paste the clipboard value. Run **PanelVerse iOS personal device with accounts**.
 4. Install the resulting IPA with the same sideloading account as before and keep the same app bundle identifier in Sideloadly. Tap the person icon on **Home** to sign in or create an account.
 
-For a local Xcode build, put the same plist in `ios/PanelVerse`. Account sign-in uses Firebase email and password. Favorites, reading lists, and offline downloads are stored on the device.
+For a local Xcode build, put the same plist in `ios/PanelVerse`. Account sign-in uses Firebase email and password. Signed-in Favorites and reading lists use the same Realtime Database paths as Android. Guest lists, reading positions, and offline downloads stay on the device. If you use a different Firebase project, update the database URL in `ios/PanelVerse/LibraryStore.swift` and `FirebaseHelper.kt`.
 
 #### Simulator and TestFlight workflows
 
