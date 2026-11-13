@@ -69,6 +69,9 @@ function (operation, expectedUrl, anchor) {
         const closeLabel = /^(?:close|dismiss|[x×✕✖])$/i;
         const adBrand = /\b(?:adskeeper|inspiredot|interesting for you)\b/i;
         const notificationTime = /\b(?:now|\d+ (?:seconds?|minutes?) ago)\b/i;
+        const comicProvider = /^(?:www\.)?readcomicsonline\.ru$/.test(location.hostname);
+        const sponsorPrompt = /\bvisit\s+(?:https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s]*)?\s+to learn more\b/i;
+        const vpnPrompt = /\bvpn\s+toggle\s*[-–—]?\s*recommended\b|\bthe best in online security\b/i;
         const chapterPath = /^\/(?:manga|comic)\/[^/]+\/[^/]+\/?$/.test(location.pathname);
         const readerImages = '#imgs [id^="page"] img,#reader-all img,#all img';
         const pageControls = 'form,select,nav,header,footer';
@@ -90,6 +93,33 @@ function (operation, expectedUrl, anchor) {
                         control.getAttribute('title') || control.textContent).trim();
                     return closeLabel.test(label) || (control.matches('[class*="close"]') && !label);
                 });
+        }
+
+        function hideComicPromotion(seed) {
+            let card = null;
+            for (let box = seed, depth = 0; box && box !== document.body && depth < 9;
+                box = box.parentElement, depth++) {
+                if (box.matches(pageControls) || box.querySelector(pageControls + ',iframe') || containsReaderPage(box)) break;
+                const bounds = box.getBoundingClientRect();
+                if (bounds.height > innerHeight * 0.75) break;
+                if (bounds.width < innerWidth * 0.4 || bounds.height < 32) continue;
+                const text = (box.innerText || box.textContent).replace(/\s+/g, ' ').trim();
+                if (text.length > 500) break;
+                const position = getComputedStyle(box).position;
+                const floating = position === 'fixed' || position === 'sticky' || position === 'absolute';
+                const media = box.querySelector('img,picture,video,canvas,svg,[style*="background-image"]');
+                if (vpnPrompt.test(text) && floating) {
+                    card = box;
+                    break;
+                }
+                if (!sponsorPrompt.test(text)) continue;
+                if (floating && (media || hasCloseControl(box))) {
+                    card = box;
+                    break;
+                }
+                if (!card && media) card = box;
+            }
+            if (card) hideAd(card);
         }
 
         function markInlineBanners(body) {
@@ -211,6 +241,9 @@ function (operation, expectedUrl, anchor) {
                 else if (/\b(?:click|allow|robot)\b/i.test(node.nodeValue)) hidePrompt(label, checked);
                 if (adBrand.test(node.nodeValue) || notificationTime.test(node.nodeValue)) {
                     hideNotification(label, checkedNotifications);
+                }
+                if (comicProvider && /\b(?:visit|learn\s+more|vpn|online\s+security)\b/i.test(node.nodeValue)) {
+                    hideComicPromotion(label);
                 }
             }
         }

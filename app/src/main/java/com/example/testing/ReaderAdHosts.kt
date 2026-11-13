@@ -14,6 +14,8 @@ internal object ReaderAdHosts {
         "adsterra.com",
         "adskeeper.com",
         "inspiredot.net",
+        "weddinginseychelles.com",
+        "chemicalandequipmentlimited.com",
         "mgid.com",
         "clickadu.com",
         "exoclick.com",
