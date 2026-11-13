@@ -1,25 +1,33 @@
 # PanelVerse
 
-PanelVerse is an Android app for browsing manga and comics, keeping a reading list, and picking up where you left off. The **Ink & Screentone** interface brings together a searchable cover grid, series details, an in-app web reader, and an offline library for your own files.
+PanelVerse is an Android and iOS app for browsing manga and comics, keeping a reading list, and picking up where you left off.
 
-## Download and install on Android
+## Download PanelVerse
 
-Open this link on a phone or tablet running **Android 7 or newer**. [Download PanelVerse 1.9.1 for Android (.apk)](https://github.com/Hazemserry90/panelverse/releases/download/v1.9.1/PanelVerse-1.9.1-release.apk)
+| Device | Download | Install |
+| --- | --- | --- |
+| Android 7 or newer | [Download Android APK](https://github.com/Hazemserry90/panelverse/releases/download/v1.9.1/PanelVerse-1.9.1-release.apk) | [Install on Android](#install-on-android) |
+| iPhone or iPad with iOS or iPadOS 16 or newer | [Download iPhone and iPad beta IPA](https://github.com/Hazemserry90/panelverse/releases/download/ios-v0.1.0-beta.1/PanelVerse-iOS-beta.ipa) | [Install from a computer](#install-on-iphone-or-ipad) |
+
+### Install on Android
+
+Download the APK directly on your phone or tablet.
 
 1. When the download finishes, tap the file in your notifications or find it under **Files → Downloads**.
 2. If Android asks for permission to install from your browser or Files app, tap **Settings** and turn on **Allow from this source** for that app. Go back and tap **Install**, then **Open**. You can turn the permission off after installing. [Android installation help](https://support.google.com/pixelphone/answer/7391672)
 
 For other versions, see [GitHub Releases](https://github.com/Hazemserry90/panelverse/releases).
 
-## iPhone and iPad
+### Install on iPhone or iPad
 
-**iPhone and iPad testing is pending.** The invitation link will appear here when the beta opens. You’ll need **iOS 16 or iPadOS 16 or newer**.
+Download the IPA on a **Windows PC or Mac**. You’ll need a USB cable and a free Apple Account.
 
-When you have an invitation:
+1. Install Sideloadly. On Windows, follow its setup prompt for the web versions of iTunes and iCloud. [Sideloadly setup](https://sideloadly.io/)
+2. Connect and unlock your iPhone or iPad. Tap **Trust** on the device if asked.
+3. Open Sideloadly, select your device, and drag in the downloaded IPA. Enter your Apple Account email, click **Start**, and follow the sign-in prompts.
+4. If prompted, enable **Settings → Privacy & Security → Developer Mode**, then restart and confirm. If you see **Untrusted Developer**, open **Settings → General → VPN & Device Management** and trust the Apple Account you used in Sideloadly. Then open **PanelVerse**. [Apple’s Developer Mode guide](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device) · [Sideloadly FAQ](https://sideloadly.io/faq)
 
-1. Install **TestFlight** from the App Store.
-2. Open the PanelVerse invitation link on your iPhone or iPad and tap **Install** in TestFlight.
-3. Open **PanelVerse**, search for a title, and tap **Start reading**.
+Free installs need to be refreshed every seven days. Use the same Apple Account in Sideloadly to refresh. [Apple’s free account limits](https://developer.apple.com/help/account/basics/about-your-developer-account)
 
 ## Try PanelVerse on Android
 
