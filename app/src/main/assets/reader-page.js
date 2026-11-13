@@ -6,8 +6,11 @@ function (operation, expectedUrl, anchor) {
         if (operation === 'comic-issues') {
             const root = location.pathname.replace(/\/$/, '') + '/';
             return [...document.querySelectorAll('a[href]')]
-                .filter(link => link.origin === location.origin && link.pathname.startsWith(root) &&
-                    !link.pathname.slice(root.length).includes('/') && link.pathname !== root)
+                .filter(link => {
+                    const path = link.pathname.replace(/\/$/, '');
+                    return link.origin === location.origin && path.startsWith(root) &&
+                        !path.slice(root.length).includes('/');
+                })
                 .slice(0, 2000)
                 .map(link => ({
                     url: link.href.slice(0, 4096),

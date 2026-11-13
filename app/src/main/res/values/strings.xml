@@ -197,7 +197,7 @@
     <string name="pv_issue_number">Issue %1$s</string>
     <string name="pv_issues_heading">Issues</string>
     <string name="pv_issue_loading">Loading issues…</string>
-    <string name="pv_issue_unavailable">Open an issue in the web reader, then choose Download issue from Reader options.</string>
+    <string name="pv_issue_unavailable">Couldn’t load the issue list. Retry or browse issues in the web reader.</string>
     <string name="pv_issue_more">Show more issues</string>
     <string name="pv_native_issue_loading">Loading issue…</string>
     <string name="pv_native_issue_unavailable">The issue couldn’t load in the native reader.</string>

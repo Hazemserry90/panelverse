@@ -15,9 +15,9 @@ internal object ComicWebData {
     private const val PAGE_CACHE_MILLIS = 60 * 60 * 1000L
     private const val ISSUE_CACHE_MILLIS = 7 * 24 * 60 * 60 * 1000L
 
-    fun rememberIssues(context: Context, series: MangaItem, result: String) {
+    fun rememberIssues(context: Context, series: MangaItem, result: String): ProviderChapters.Listing? {
         val issues = readIssues(series, result)
-        if (issues.isEmpty()) return
+        if (issues.isEmpty()) return null
         val array = JSONArray()
         issues.forEach { issue -> array.put(JSONObject().put("url", issue.url).put("title", issue.title)) }
         val encoded = array.toString()
@@ -25,6 +25,7 @@ internal object ComicWebData {
             context.getSharedPreferences("comic_issue_lists", Context.MODE_PRIVATE).edit()
                 .putString(series.id, encoded).putLong(series.id + "_time", System.currentTimeMillis()).apply()
         }
+        return ProviderChapters.Listing(issues, complete = false)
     }
 
     fun issues(context: Context, series: MangaItem): ProviderChapters.Listing? {
@@ -36,15 +37,12 @@ internal object ComicWebData {
 
     private fun readIssues(series: MangaItem, result: String): List<ProviderChapters.Chapter> {
         val array = parse(result) ?: return emptyList()
-        return (0 until minOf(array.length(), MAX_ISSUES)).mapNotNull { index ->
+        val candidates = (0 until minOf(array.length(), MAX_ISSUES)).mapNotNull { index ->
             val item = array.optJSONObject(index) ?: return@mapNotNull null
             val url = ProviderChapters.chapterUrl(series, item.optString("url")) ?: return@mapNotNull null
-            val title = item.optString("title").trim().take(140)
-            ProviderChapters.Chapter(title.ifBlank { "Issue ${url.pathSegments.last()}" }, url.toString())
-        }.distinctBy { it.url }.sortedBy {
-            it.url.substringAfterLast('/').removePrefix("issue-").removePrefix("issue_")
-                .substringBefore('-').toDoubleOrNull() ?: Double.MAX_VALUE
+            ProviderChapters.Chapter(item.optString("title"), url.toString())
         }
+        return ProviderChapters.comicIssues(candidates)
     }
 
     @Synchronized

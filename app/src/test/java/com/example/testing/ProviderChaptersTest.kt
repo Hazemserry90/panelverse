@@ -80,6 +80,19 @@ class ProviderChaptersTest {
     }
 
     @Test
+    fun prefersIssueLabelsOverReadShortcutsAndRepairsCachedShortcuts() {
+        val listing = ProviderChapters.parseList(comic, """
+            <a href="/comic/example/1">Read First</a>
+            <a href="/comic/example/3">Read Latest</a>
+            <a href="/comic/example/1/"><span class="text-brand-400">#1</span></a>
+            <a href="/comic/example/2">#2</a>
+        """.trimIndent())
+        assertEquals(listOf("#1", "#2", "Issue 3"), listing.chapters.map { it.title })
+        val cached = ProviderChapters.Chapter("Read First", "${comic.url}/1")
+        assertEquals("Issue 1", ProviderChapters.comicIssues(listOf(cached)).single().title)
+    }
+
+    @Test
     fun recognizesAnIssueFromItsPageByPageUrl() {
         val issue = comic.url + "/132"
         assertEquals(issue, ProviderChapters.comicIssueUrl(comic, "$issue/7/?mode=single#reader")?.toString())
