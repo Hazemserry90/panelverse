@@ -6,8 +6,11 @@ function (operation, expectedUrl, anchor) {
         if (operation === 'comic-issues') {
             const root = location.pathname.replace(/\/$/, '') + '/';
             return [...document.querySelectorAll('a[href]')]
-                .filter(link => link.origin === location.origin && link.pathname.startsWith(root) &&
-                    !link.pathname.slice(root.length).includes('/') && link.pathname !== root)
+                .filter(link => {
+                    const path = link.pathname.replace(/\/$/, '');
+                    return link.origin === location.origin && path.startsWith(root) &&
+                        !path.slice(root.length).includes('/');
+                })
                 .slice(0, 2000)
                 .map(link => ({
                     url: link.href.slice(0, 4096),
@@ -18,6 +21,10 @@ function (operation, expectedUrl, anchor) {
         const attributes = ['data-background-image', 'data-cfsrc', 'data-lazy-src', 'data-src', 'data-original', 'src'];
         const images = [...document.querySelectorAll('#reader-all img, #all img')];
         if (!images.length || images.length > 1000) return null;
+        const issuePath = location.pathname.split('/').filter(Boolean);
+        const pageRoute = issuePath.length === 4 && /^[1-9][0-9]*$/.test(issuePath[3]);
+        const pageTotal = (document.body?.innerText || '').match(/\bPage\s+[0-9]+\s*\/\s*([0-9]+)\b/i);
+        if ((pageRoute && images.length === 1) || (pageTotal && images.length < Number(pageTotal[1]))) return null;
         const pages = [];
         for (const image of images) {
             const source = attributes.map(name => image.getAttribute(name)).find(value => value && value.trim());
@@ -69,6 +76,9 @@ function (operation, expectedUrl, anchor) {
         const closeLabel = /^(?:close|dismiss|[x×✕✖])$/i;
         const adBrand = /\b(?:adskeeper|inspiredot|interesting for you)\b/i;
         const notificationTime = /\b(?:now|\d+ (?:seconds?|minutes?) ago)\b/i;
+        const comicProvider = /^(?:www\.)?readcomicsonline\.ru$/.test(location.hostname);
+        const sponsorPrompt = /\bvisit\s+(?:https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s]*)?\s+to learn more\b/i;
+        const vpnPrompt = /\bvpn\s+toggle\s*[-–—]?\s*recommended\b|\bthe best in online security\b/i;
         const chapterPath = /^\/(?:manga|comic)\/[^/]+\/[^/]+\/?$/.test(location.pathname);
         const readerImages = '#imgs [id^="page"] img,#reader-all img,#all img';
         const pageControls = 'form,select,nav,header,footer';
@@ -90,6 +100,33 @@ function (operation, expectedUrl, anchor) {
                         control.getAttribute('title') || control.textContent).trim();
                     return closeLabel.test(label) || (control.matches('[class*="close"]') && !label);
                 });
+        }
+
+        function hideComicPromotion(seed) {
+            let card = null;
+            for (let box = seed, depth = 0; box && box !== document.body && depth < 9;
+                box = box.parentElement, depth++) {
+                if (box.matches(pageControls) || box.querySelector(pageControls + ',iframe') || containsReaderPage(box)) break;
+                const bounds = box.getBoundingClientRect();
+                if (bounds.height > innerHeight * 0.75) break;
+                if (bounds.width < innerWidth * 0.4 || bounds.height < 32) continue;
+                const text = (box.innerText || box.textContent).replace(/\s+/g, ' ').trim();
+                if (text.length > 500) break;
+                const position = getComputedStyle(box).position;
+                const floating = position === 'fixed' || position === 'sticky' || position === 'absolute';
+                const media = box.querySelector('img,picture,video,canvas,svg,[style*="background-image"]');
+                if (vpnPrompt.test(text) && floating) {
+                    card = box;
+                    break;
+                }
+                if (!sponsorPrompt.test(text)) continue;
+                if (floating && (media || hasCloseControl(box))) {
+                    card = box;
+                    break;
+                }
+                if (!card && media) card = box;
+            }
+            if (card) hideAd(card);
         }
 
         function markInlineBanners(body) {
@@ -211,6 +248,9 @@ function (operation, expectedUrl, anchor) {
                 else if (/\b(?:click|allow|robot)\b/i.test(node.nodeValue)) hidePrompt(label, checked);
                 if (adBrand.test(node.nodeValue) || notificationTime.test(node.nodeValue)) {
                     hideNotification(label, checkedNotifications);
+                }
+                if (comicProvider && /\b(?:visit|learn\s+more|vpn|online\s+security)\b/i.test(node.nodeValue)) {
+                    hideComicPromotion(label);
                 }
             }
         }

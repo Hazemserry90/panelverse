@@ -23,6 +23,7 @@ internal object ProviderChapters {
     private val mangaNumber = Regex("""^c(\d+(?:\.\d+)?)(?:[-_][a-z0-9._-]+)?$""")
     private val issueNumber = Regex("""^(?:issue[-_])?(\d+(?:\.\d+)?)(?:[-_][a-z0-9._-]+)?$""", RegexOption.IGNORE_CASE)
     private val specialIssue = Regex("""^(?:annual|special|giant|preview|fcbd|one[-_]shot)(?:[-_][a-z0-9._-]+|\d+)?$""", RegexOption.IGNORE_CASE)
+    private val issueShortcut = Regex("""^(?:read\s+(?:first|last|latest|now|online)\b.*|start\s+reading|continue\s+reading)$""", RegexOption.IGNORE_CASE)
     private val mangaImageArray = Regex("""\b(?:var|let|const)\s+([\w$]+)\s*=\s*\[([^\[\]]*)]""")
     private val mangaImageReference = Regex("""['"]data-src['"]\s*,\s*([\w$]+)""")
     private val quotedValue = Regex("""['"]([^'"\r\n]+)['"]""")
@@ -47,37 +48,59 @@ internal object ProviderChapters {
         val manga = root.pathSegments.first() == "manga"
         val doc = Jsoup.parse(html, root.toString())
         val links = if (manga) doc.select("tr:has(.chapter) a[href], .chapter a[href]") else doc.select("a[href]")
-        val chapters = links.mapNotNull { link ->
+        val candidates = links.mapNotNull { link ->
             val url = chapterUrl(series, root.resolve(link.attr("href"))?.toString()) ?: return@mapNotNull null
             val label = link.selectFirst(".text-brand-400")?.text() ?: link.text()
             val segment = url.pathSegments.last()
-            val number = entryNumber(segment, manga)
-            val fallback = if (manga) "Chapter ${number ?: segment}" else "Issue ${number ?: segment}"
-            val title = if (manga) label else label.replace(Regex("""^Chapter\b""", RegexOption.IGNORE_CASE), "Issue")
-            Chapter(title.take(140).ifBlank { fallback }, url.toString())
-        }.distinctBy { it.url }.sortedBy {
-            entryNumber(it.url.substringAfterLast('/'), manga)?.toDoubleOrNull()
-                ?: Double.MAX_VALUE
+            val title = if (manga) label.take(140).ifBlank { "Chapter ${entryNumber(segment, true) ?: segment}" }
+                else label
+            Chapter(title, url.toString())
         }
+        val chapters = if (manga) candidates.distinctBy { it.url }.sortedBy {
+            entryNumber(it.url.substringAfterLast('/'), true)?.toDoubleOrNull() ?: Double.MAX_VALUE
+        } else comicIssues(candidates)
         val status = doc.selectFirst(if (manga) ".value.status" else "div.flex.flex-wrap.gap-2 span.rounded-full")?.text()
         val complete = if (series.id == "bleachtybw") chapters.lastOrNull()?.url?.endsWith("/c686") == true
             else status.equals("Completed", true) || status.equals("Complete", true)
         return Listing(chapters, complete)
     }
 
+    fun comicIssues(candidates: List<Chapter>): List<Chapter> {
+        return candidates.groupBy { it.url }.values.map { matches ->
+            val issue = matches.first()
+            val segment = issue.url.substringAfterLast('/')
+            val title = matches.asSequence().map { it.title.trim() }.firstOrNull {
+                it.isNotEmpty() && !issueShortcut.matches(it)
+            }?.replace(Regex("""^Chapter\b""", RegexOption.IGNORE_CASE), "Issue")
+            issue.copy(title = title?.take(140) ?: "Issue ${entryNumber(segment, false) ?: segment}")
+        }.sortedBy { entryNumber(it.url.substringAfterLast('/'), false)?.toDoubleOrNull() ?: Double.MAX_VALUE }
+    }
+
     fun chapterUrl(series: MangaItem, candidate: String?): HttpUrl? {
         val root = seriesRoot(series)
         val url = candidate?.let(::safeUrl) ?: return null
-        val origin = ReaderLinks.inspect(url.toString()) as? ReaderLinks.Approved ?: return null
+        val origin = ReaderLinks.inspect(candidate) as? ReaderLinks.Approved ?: return null
         val rootOrigin = ReaderLinks.inspect(root.toString()) as? ReaderLinks.Approved ?: return null
+        val segments = url.pathSegments.dropLastWhile { it.isEmpty() }
         if (origin.provider != rootOrigin.provider ||
-            url.pathSegments.size != 3 || url.pathSegments.take(2) != root.pathSegments) return null
-        val segment = url.pathSegments.last()
+            segments.size != 3 || segments.take(2) != root.pathSegments) return null
+        val segment = segments.last()
         val manga = root.pathSegments.first() == "manga"
         val number = entryNumber(segment, manga)?.toDoubleOrNull()
         if (number == null && (manga || segment.length > 80 || !specialIssue.matches(segment))) return null
         if (series.id == "bleachtybw" && (number == null || number !in 480.0..686.0)) return null
-        return url.newBuilder().host(root.host).query(null).fragment(null).build()
+        return url.newBuilder().host(root.host).encodedPath("/" + url.encodedPathSegments.take(3).joinToString("/"))
+            .query(null).fragment(null).build()
+    }
+
+    fun comicIssueUrl(series: MangaItem, candidate: String?): HttpUrl? {
+        val origin = ReaderLinks.inspect(candidate) as? ReaderLinks.Approved ?: return null
+        if (origin.provider != "readcomicsonline.ru") return null
+        val url = candidate?.let(::safeUrl) ?: return null
+        chapterUrl(series, candidate)?.let { return it }
+        val segments = url.encodedPathSegments.dropLastWhile { it.isEmpty() }
+        if (segments.size != 4 || !segments.last().matches(Regex("[1-9][0-9]{0,3}"))) return null
+        return chapterUrl(series, url.newBuilder().encodedPath("/" + segments.take(3).joinToString("/")).build().toString())
     }
 
     private fun entryNumber(segment: String, manga: Boolean): String? =
@@ -121,7 +144,7 @@ internal object ProviderChapters {
 
     fun webImageUrl(value: String): String? = safeUrl(value)?.toString()
 
-    private fun seriesRoot(series: MangaItem): HttpUrl {
+    internal fun seriesRoot(series: MangaItem): HttpUrl {
         val url = series.url.toHttpUrlOrNull() ?: throw IOException("Invalid series")
         if (ReaderLinks.inspect(url.toString()) !is ReaderLinks.Approved || url.pathSegments.size < 2) {
             throw IOException("Unsupported series")

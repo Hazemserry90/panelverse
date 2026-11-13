@@ -205,13 +205,22 @@ class SeriesActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.seriesChaptersMore).setText(if (comics) R.string.pv_issue_more else R.string.pv_chapter_more)
         bindRead()
         request = lifecycleScope.launch {
+            val cached = if (comics) ComicWebData.issues(this@SeriesActivity, series) else null
+            if (cached != null) renderListing(cached)
             val result = try {
                 runInterruptible(Dispatchers.IO) { ProviderChapters.readList(series) }
             } catch (_: IOException) {
                 null
             }
             val fetched = result?.takeIf { it.chapters.isNotEmpty() }
-            renderListing(fetched ?: if (comics) ComicWebData.issues(this@SeriesActivity, series) else null)
+            val available = fetched ?: listing ?: if (comics) {
+                try {
+                    ComicIssueLookup.read(this@SeriesActivity, series)
+                } catch (_: IOException) {
+                    null
+                }
+            } else null
+            if (available != listing || listing == null) renderListing(available ?: listing)
         }
     }
 

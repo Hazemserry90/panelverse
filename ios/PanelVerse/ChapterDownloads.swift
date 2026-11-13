@@ -9,18 +9,16 @@ struct DownloadChapter: Identifiable, Sendable {
     let provider: String
     let isManga: Bool
     let number: Double?
+    var finalEntry = false
     var id: URL { address }
 
     init?(series: Series, url: URL, label: String? = nil) {
         guard series.isChapter(url), var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
-        guard let segment = Series.readerPath(url).last else { return nil }
-        let pattern = series.isManga ? #"^c[0-9]+(?:\.[0-9]+)?(?:[-_][a-z0-9._-]+)?$"# :
-            #"^(?:(?:issue[-_])?[0-9]+(?:\.[0-9]+)?(?:[-_][a-z0-9._-]+)?|(?:annual|special|giant|preview|fcbd|one[-_]shot)(?:[-_][a-z0-9._-]+|[0-9]+)?)$"#
-        guard segment.utf8.count <= 80,
-              segment.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil else { return nil }
+        let path = Series.readerPath(url)
+        let segment = path[2]
         parts.host = series.provider
         parts.port = nil
-        parts.path = "/" + Series.readerPath(url).joined(separator: "/")
+        parts.path = "/" + path.prefix(3).joined(separator: "/")
         parts.query = nil
         parts.fragment = nil
         guard let address = parts.url else { return nil }
@@ -34,27 +32,35 @@ struct DownloadChapter: Identifiable, Sendable {
         let cleaned = label?.split(whereSeparator: \.isWhitespace).joined(separator: " ") ?? ""
         let heading = series.isManga ? cleaned :
             cleaned.replacingOccurrences(of: #"^Chapter\b"#, with: "Issue", options: [.regularExpression, .caseInsensitive])
-        entryTitle = heading.isEmpty || heading == entry
+        entryTitle = heading.isEmpty || heading == entry || (!series.isManga && Self.isShortcut(heading))
             ? "\(series.isManga ? "Chapter" : "Issue") \(entry)" : String(heading.prefix(140))
         title = "\(series.title) · \(entryTitle)"
     }
 
+    static func isShortcut(_ title: String) -> Bool {
+        let label = title.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return label.range(of: #"^(?:read\s+(?:first|last|latest|now|online)\b.*|start\s+reading|continue\s+reading)$"#,
+                           options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
     func allowsImage(_ url: URL) -> Bool {
-        guard url.absoluteString.utf8.count <= 4096,
+        guard url.absoluteString.utf8.count <= 4096, !Series.hasUnsafeCharacters(url.absoluteString),
               let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
               parts.scheme?.lowercased() == "https", parts.user == nil, parts.password == nil,
-              parts.port == nil || parts.port == 443, let host = parts.host?.lowercased() else { return false }
+              parts.port == nil || parts.port == 443, let host = parts.host?.lowercased(),
+              !Series.readerPath(url).isEmpty else { return false }
         return host == provider || host.hasSuffix("." + provider)
     }
 }
 
 enum ChapterDownloadError: LocalizedError {
-    case listUnavailable, pagesUnavailable, providerResponse, invalidPage, providerHTTP(Int), verificationRequired, interrupted
+    case listUnavailable, pagesUnavailable, incompleteIssue, providerResponse, invalidPage, providerHTTP(Int), verificationRequired, interrupted
 
     var errorDescription: String? {
         switch self {
         case .listUnavailable: return "The provider’s list couldn’t load. Try again or open the web reader."
         case .pagesUnavailable: return "The provider’s page images aren’t available for download. Reload this chapter or issue and try again."
+        case .incompleteIssue: return "Choose All in one page in the web reader, then try downloading this issue again."
         case .providerResponse: return "The provider couldn’t send a page image. Check your connection and try again."
         case .invalidPage: return "A page isn’t a readable JPG, PNG, or WebP image."
         case .providerHTTP(let status): return "The reading source returned HTTP \(status). Try the web reader."
@@ -74,6 +80,16 @@ final class ReaderDownloadSource {
         self.chapter = chapter
         self.visibleURL = visibleURL
         self.view = view
+    }
+
+    func readyPages() async throws -> [URL] {
+        for _ in 0..<10 {
+            try Task.checkCancellation()
+            guard view?.url == visibleURL else { break }
+            do { return try await pages() }
+            catch ChapterDownloadError.pagesUnavailable { try await Task.sleep(nanoseconds: 400_000_000) }
+        }
+        throw ChapterDownloadError.pagesUnavailable
     }
 
     func pages() async throws -> [URL] {
@@ -116,6 +132,11 @@ final class ReaderDownloadSource {
             }
         }
         if (!sources.length || sources.length > 1000) return null;
+        if (!isManga) {
+            const path = location.pathname.split('/').filter(Boolean);
+            const total = (document.body?.innerText || '').match(/\bPage\s+[0-9]+\s*\/\s*([0-9]+)\b/i);
+            if ((path.length === 4 && sources.length === 1) || (total && sources.length < Number(total[1]))) return [];
+        }
         const pages = [];
         for (const raw of sources) {
             if (!raw || raw.length > 4096 || /[\u0000-\u0020\\]/.test(raw)) return null;
@@ -130,9 +151,10 @@ final class ReaderDownloadSource {
         let value = try await view.callAsyncJavaScript(script, arguments: [
             "expected": visibleURL.absoluteString, "isManga": chapter.isManga
         ], in: nil, contentWorld: .defaultClient)
-        guard view.url == visibleURL, let strings = value as? [String], (1...1000).contains(strings.count) else {
+        guard view.url == visibleURL, let strings = value as? [String], strings.count <= 1000 else {
             throw ChapterDownloadError.pagesUnavailable
         }
+        if strings.isEmpty { throw ChapterDownloadError.incompleteIssue }
         let urls = strings.compactMap { URL(string: $0) }.filter(chapter.allowsImage)
         guard urls.count == strings.count else { throw ChapterDownloadError.pagesUnavailable }
         return urls
@@ -141,6 +163,11 @@ final class ReaderDownloadSource {
 
 @MainActor
 final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
+    private struct IssueList: Codable {
+        let fetchedAt: Date
+        let entries: [[String: String]]
+    }
+
     private let series: Series
     private let address: URL
     private var committed = false
@@ -156,7 +183,22 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
     static func chapters(for series: Series) async throws -> [DownloadChapter] {
         let loader = ProviderReaderLoader(series: series, address: series.chapterListAddress)
         return try await loader.extract(failure: .listUnavailable) { view, url in
-            let script = #"""
+            try await readChapters(for: series, from: view, at: url)
+        }
+    }
+
+    static func cachedIssues(for series: Series) -> [DownloadChapter] {
+        guard !series.isManga,
+              let data = UserDefaults.standard.data(forKey: "panelverse.issues.\(series.id)"),
+              data.count <= 256 * 1024,
+              let list = try? JSONDecoder().decode(IssueList.self, from: data),
+              (0...604_800).contains(Date().timeIntervalSince(list.fetchedAt)) else { return [] }
+        return decodeChapters(list.entries, series: series)
+    }
+
+    static func readChapters(for series: Series, from view: WKWebView, at url: URL) async throws -> [DownloadChapter]? {
+        guard series.contains(url), Series.readerPath(url) == Series.readerPath(series.chapterListAddress) else { return nil }
+        let script = #"""
             if (location.href !== expected || document.readyState === 'loading') return null;
             const root = location.pathname.replace(/\/+$/, '') + '/';
             const chapterLinks = isManga ? document.querySelectorAll('.chapter a[href]') : [];
@@ -170,20 +212,48 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
                 entries.push({url: link.href, title: (link.querySelector('.text-brand-400') || link).textContent.trim().slice(0, 140)});
                 if (entries.length >= 4000) break;
             }
-            return entries;
-            """#
-            let value = try await view.callAsyncJavaScript(script, arguments: [
-                "expected": url.absoluteString, "isManga": series.isManga
-            ], in: nil, contentWorld: .defaultClient)
-            guard let entries = value as? [[String: String]] else { return nil }
-            var seen = Set<URL>()
-            let chapters = entries.compactMap { entry -> DownloadChapter? in
-                guard let raw = entry["url"], let link = URL(string: raw),
-                      let chapter = DownloadChapter(series: series, url: link, label: entry["title"]),
-                      seen.insert(chapter.address).inserted else { return nil }
-                return chapter
+            const status = isManga ? document.querySelector('.value.status') :
+                [...document.querySelectorAll('div.flex.flex-wrap.gap-2 span.rounded-full')]
+                    .find(node => /^(completed|complete)$/i.test(node.textContent.trim()));
+            return {entries, complete: /^(completed|complete)$/i.test(status?.textContent.trim() || '')};
+        """#
+        let value = try await view.callAsyncJavaScript(script, arguments: [
+            "expected": url.absoluteString, "isManga": series.isManga
+        ], in: nil, contentWorld: .defaultClient)
+        guard !Task.isCancelled, view.url == url, let result = value as? [String: Any],
+              let entries = result["entries"] as? [[String: String]] else { return nil }
+        var chapters = decodeChapters(entries, series: series)
+        guard !chapters.isEmpty else { return nil }
+        let complete = result["complete"] as? Bool == true
+        if let last = chapters.indices.filter({ chapters[$0].number != nil })
+            .max(by: { (chapters[$0].number ?? 0) < (chapters[$1].number ?? 0) }) {
+            chapters[last].finalEntry = series.id == "bleachtybw" ? chapters[last].number == 686 :
+                complete && chapters.allSatisfy { $0.number != nil }
+        }
+        if !series.isManga {
+            let validated = chapters.map { ["url": $0.address.absoluteString, "title": $0.entryTitle,
+                                            "final": $0.finalEntry ? "true" : "false"] }
+            if let data = try? JSONEncoder().encode(IssueList(fetchedAt: .now, entries: validated)),
+               data.count <= 256 * 1024 {
+                UserDefaults.standard.set(data, forKey: "panelverse.issues.\(series.id)")
             }
-            return chapters.isEmpty ? nil : chapters
+        }
+        return chapters
+    }
+
+    private static func decodeChapters(_ entries: [[String: String]], series: Series) -> [DownloadChapter] {
+        var seen = Set<URL>()
+        let preferred = series.isManga ? entries : entries.filter {
+            guard let label = $0["title"], !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+            return !DownloadChapter.isShortcut(label)
+        } + entries
+        return preferred.compactMap { entry in
+            guard let raw = entry["url"], let url = URL(string: raw),
+                  Series.readerPath(url).count == 3,
+                  var chapter = DownloadChapter(series: series, url: url, label: entry["title"]),
+                  seen.insert(chapter.address).inserted else { return nil }
+            chapter.finalEntry = entry["final"] == "true"
+            return chapter
         }
     }
 
@@ -193,7 +263,7 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
         }
         let loader = ProviderReaderLoader(series: series, address: chapter.address)
         let pages: [URL] = try await loader.extract(failure: .pagesUnavailable) { view, url in
-            try? await ReaderDownloadSource(chapter: chapter, visibleURL: url, view: view).pages()
+            try await ReaderDownloadSource(chapter: chapter, visibleURL: url, view: view).pages()
         }
         if pageLists.count >= 12, let oldest = pageLists.min(by: { $0.value.loadedAt < $1.value.loadedAt }) {
             pageLists.removeValue(forKey: oldest.key)
@@ -224,7 +294,13 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
             try Task.checkCancellation()
             if let navigationError { throw navigationError }
             if committed, let url = view.url, accepts(url) {
-                if let result = try? await read(view, url), view.url == url { return result }
+                do {
+                    if let result = try await read(view, url), view.url == url { return result }
+                } catch ChapterDownloadError.incompleteIssue {
+                    throw ChapterDownloadError.incompleteIssue
+                } catch {
+                    try Task.checkCancellation()
+                }
                 if loaded { attemptsAfterLoad += 1 }
                 if attemptsAfterLoad >= 9 { break }
             }
@@ -298,10 +374,11 @@ final class ChapterDownloads: ObservableObject {
     }
 
     func start(_ source: ReaderDownloadSource, library: LibraryStore, account: AccountStore) {
-        start(source.chapter, library: library, account: account, pages: source.pages)
+        start(source.chapter, library: library, account: account, pages: source.readyPages)
     }
 
     func start(_ chapter: DownloadChapter, library: LibraryStore, account: AccountStore,
+               finalEntry: Bool = false,
                pages: @escaping @MainActor () async throws -> [URL]) {
         guard let userID = account.currentUserID else {
             failure = "Sign in to download chapters and issues."
@@ -324,7 +401,7 @@ final class ChapterDownloads: ObservableObject {
                 let pageURLs = try await pages()
                 try Task.checkCancellation()
                 guard account.currentUserID == userID else { return }
-                let book = try await ComicArchive.download(chapter, pages: pageURLs) { [weak self] percent in
+                let book = try await ComicArchive.download(chapter, pages: pageURLs, finalEntry: finalEntry || chapter.finalEntry) { [weak self] percent in
                     self?.percent = percent
                 }
                 if Task.isCancelled || account.currentUserID != userID {

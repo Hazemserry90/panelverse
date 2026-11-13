@@ -9,6 +9,7 @@ struct CatalogScreen: View {
     @State private var search = ""
     @State private var category = "All"
     @State private var showAccount = false
+    @State private var surprise: Series?
 
     private var results: [Series] {
         Series.catalog.filter { series in
@@ -29,7 +30,12 @@ struct CatalogScreen: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("LAST OPENED").font(.caption2.bold()).foregroundStyle(.secondary)
                                 Text(recent.title).font(.headline)
-                                Text("Resume reading").font(.subheadline.bold()).foregroundStyle(Ink.paper)
+                                if let position = library.position(recent),
+                                   let index = position.pageIndex, let total = position.totalPages,
+                                   (0..<total).contains(index) {
+                                    Text("Page \(index + 1) of \(total)").font(.caption).foregroundStyle(.secondary)
+                                }
+                                Text("Resume reading").font(.subheadline.bold()).foregroundStyle(Ink.text)
                             }
                             Spacer()
                             Image(systemName: "chevron.right").accessibilityHidden(true)
@@ -39,6 +45,46 @@ struct CatalogScreen: View {
                         .overlay { Rectangle().strokeBorder(.white.opacity(0.16)) }
                     }
                     .buttonStyle(.plain)
+                } else if !discover && search.isEmpty, let first = Series.catalog.first {
+                    NavigationLink { SeriesScreen(series: first) } label: {
+                        HStack(spacing: 14) {
+                            Cover(series: first).frame(width: 64, height: 92)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("START HERE").font(.caption2.bold())
+                                    .padding(.horizontal, 6).padding(.vertical, 3)
+                                    .background(Ink.paper).foregroundStyle(Ink.ink)
+                                Text(first.title).font(.headline)
+                                Text("Open series").font(.subheadline.weight(.semibold))
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").accessibilityHidden(true)
+                        }
+                        .padding(12)
+                        .background(Ink.panel)
+                        .overlay { Rectangle().strokeBorder(.white.opacity(0.16)) }
+                    }
+                    .buttonStyle(.plain)
+                }
+                if discover && search.isEmpty && category == "All", let recent = library.lastRead {
+                    let related = Series.catalog.filter { $0.category == recent.category && $0.id != recent.id }
+                    if !related.isEmpty {
+                        Text("Because you read \(recent.title)").font(.headline)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(alignment: .top, spacing: 10) {
+                                ForEach(Array(related.prefix(6))) { series in
+                                    NavigationLink { SeriesScreen(series: series) } label: {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Cover(series: series).frame(width: 84, height: 126)
+                                            Text(series.title).font(.caption.bold()).lineLimit(2)
+                                            Text("Same category: \(recent.category)").font(.caption2).foregroundStyle(.secondary)
+                                        }
+                                        .frame(width: 92, alignment: .leading)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -50,7 +96,7 @@ struct CatalogScreen: View {
                                     .font(.subheadline.weight(.semibold))
                                     .padding(.horizontal, 12)
                                     .frame(minHeight: 44)
-                                    .foregroundStyle(category == option ? Ink.background : Ink.paper)
+                                    .foregroundStyle(category == option ? Ink.ink : Ink.text)
                                     .background(category == option ? Ink.paper : Ink.panel)
                             }
                             .buttonStyle(.plain)
@@ -80,6 +126,22 @@ struct CatalogScreen: View {
                                 .overlay { Rectangle().strokeBorder(.white.opacity(0.12)) }
                             }
                             .buttonStyle(.plain)
+                            .overlay(alignment: .topTrailing) {
+                                if !discover {
+                                    Button { library.toggleFavorite(series) } label: {
+                                        Image(systemName: library.isFavorite(series) ? "star.fill" : "star")
+                                            .font(.caption.weight(.semibold))
+                                            .frame(width: 25, height: 25)
+                                            .foregroundStyle(Ink.ink)
+                                            .background(Ink.paper)
+                                            .frame(width: 44, height: 44, alignment: .topTrailing)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(library.isFavorite(series) ? "Remove from Favorites" : "Add to Favorites")
+                                    .accessibilityHint(series.title)
+                                }
+                            }
                         }
                     }
                 }
@@ -92,11 +154,20 @@ struct CatalogScreen: View {
         .toolbar {
             if !discover {
                 ToolbarItem(placement: .primaryAction) {
+                    Button { surprise = results.randomElement() } label: {
+                        Label("Surprise me", systemImage: "die.face.5")
+                    }
+                    .disabled(results.isEmpty)
+                }
+                ToolbarItem(placement: .primaryAction) {
                     Button { showAccount = true } label: {
                         Label(account.email == nil ? "Sign in" : "Account", systemImage: "person.crop.circle")
                     }
                 }
             }
+        }
+        .navigationDestination(isPresented: Binding(get: { surprise != nil }, set: { if !$0 { surprise = nil } })) {
+            if let surprise { SeriesScreen(series: surprise) }
         }
         .sheet(isPresented: $showAccount) { AccountScreen() }
     }
@@ -116,8 +187,8 @@ struct Cover: View {
                     .clipped()
             } else {
                 Rectangle().fill(Ink.paper).overlay {
-                    Rectangle().strokeBorder(Ink.background, lineWidth: 1).padding(5)
-                    Image(systemName: "book.closed").font(.title).foregroundStyle(Ink.background)
+                    Rectangle().strokeBorder(Ink.ink, lineWidth: 1).padding(5)
+                    Image(systemName: "book.closed").font(.title).foregroundStyle(Ink.ink)
                 }
             }
         }
@@ -143,12 +214,14 @@ struct SeriesScreen: View {
         case native(DownloadChapter)
         case offline(OfflineBook)
         case web(URL)
+        case download(DownloadChapter)
 
         var id: String {
             switch self {
             case .native(let chapter): return "native:\(chapter.address)"
             case .offline(let book): return "offline:\(book.id)"
             case .web(let address): return "web:\(address)"
+            case .download(let chapter): return "download:\(chapter.address)"
             }
         }
     }
@@ -182,7 +255,7 @@ struct SeriesScreen: View {
                 Text(series.category.uppercased())
                     .font(.caption.bold())
                     .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Ink.paper).foregroundStyle(Ink.background)
+                    .background(Ink.paper).foregroundStyle(Ink.ink)
                 Text(series.title).font(.largeTitle.weight(.black))
                 Text("Reading source · \(series.provider)").foregroundStyle(.secondary)
                 Button {
@@ -193,7 +266,8 @@ struct SeriesScreen: View {
                         .frame(maxWidth: .infinity, minHeight: 36)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(loadingChapters && entries.isEmpty && library.position(series) == nil && !series.isChapter(series.address))
+                .disabled(series.isManga && loadingChapters && entries.isEmpty &&
+                          library.position(series) == nil && !series.isChapter(series.address))
                 HStack {
                     Button {
                         library.toggleFavorite(series)
@@ -208,7 +282,7 @@ struct SeriesScreen: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                .tint(Ink.paper)
+                .tint(Ink.text)
                 Menu {
                     ForEach(ReadingList.allCases) { list in
                         Button(list.rawValue) { library.move(series, to: list) }
@@ -219,7 +293,7 @@ struct SeriesScreen: View {
                 } label: {
                     Label(library.list(series)?.rawValue ?? "Want to Read", systemImage: "bookmark")
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .foregroundStyle(Ink.paper)
+                        .foregroundStyle(Ink.text)
                         .background(Ink.panel, in: RoundedRectangle(cornerRadius: 12))
                 }
                 chapterList(entries)
@@ -230,13 +304,17 @@ struct SeriesScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: retryList) { await loadChapters() }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if downloads.failure != nil { DownloadStatus() }
+            if downloads.active != nil || downloads.failure != nil || downloads.completed != nil { DownloadStatus() }
         }
-        .fullScreenCover(item: $reader) { destination in
+        .fullScreenCover(item: $reader, onDismiss: refreshCachedIssues) { destination in
             switch destination {
-            case .native(let chapter): NativeReaderScreen(series: series, chapter: chapter)
-            case .offline(let book): NativeReaderScreen(book: book, series: series)
+            case .native(let chapter): NativeReaderScreen(series: series, chapter: chapter, finalEntry: chapter.finalEntry)
+            case .offline(let book):
+                NativeReaderScreen(book: book, series: series,
+                                   finalEntry: chapters.contains { $0.address == book.source && $0.finalEntry })
             case .web(let address): OnlineReaderScreen(series: series, initialAddress: address)
+            case .download(let chapter):
+                OnlineReaderScreen(series: series, initialAddress: chapter.address, automaticDownload: chapter)
             }
         }
         .sheet(isPresented: $showAccount) { AccountScreen() }
@@ -248,10 +326,12 @@ struct SeriesScreen: View {
             Text(series.isManga ? "Chapters" : "Issues")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
-            Button("Open in web reader") { reader = .web(series.chapterListAddress) }
+            Button(series.isManga ? "Open in web reader" : "Browse issues to download") {
+                reader = .web(series.chapterListAddress)
+            }
                 .buttonStyle(.bordered)
-                .tint(Ink.paper)
-            if loadingChapters {
+                .tint(Ink.text)
+            if loadingChapters && entries.isEmpty {
                 ProgressView().accessibilityLabel(series.isManga ? "Loading chapters" : "Loading issues")
             } else if chapterListFailed {
                 Text(chapterListError)
@@ -297,6 +377,7 @@ struct SeriesScreen: View {
                 if let book { reader = .offline(book) }
                 else if active { downloads.cancel() }
                 else if account.currentUserID == nil { showAccount = true }
+                else if !series.isManga { reader = .download(chapter) }
                 else {
                     downloads.start(chapter, library: library, account: account) {
                         try await ProviderReaderLoader.pages(for: series, chapter: chapter)
@@ -325,6 +406,7 @@ struct SeriesScreen: View {
     private func loadChapters() async {
         loadingChapters = true
         chapterListFailed = false
+        refreshCachedIssues()
         do {
             let entries = try await ProviderReaderLoader.chapters(for: series)
             try Task.checkCancellation()
@@ -334,8 +416,16 @@ struct SeriesScreen: View {
             guard !Task.isCancelled else { return }
             chapterListError = (error as? ChapterDownloadError)?.localizedDescription ??
                 ChapterDownloadError.listUnavailable.localizedDescription
-            chapterListFailed = true
+            chapterListFailed = chapters.isEmpty
             loadingChapters = false
+        }
+    }
+
+    private func refreshCachedIssues() {
+        let cached = ProviderReaderLoader.cachedIssues(for: series)
+        if !cached.isEmpty {
+            chapters = cached
+            chapterListFailed = false
         }
     }
 
@@ -349,7 +439,8 @@ struct SeriesScreen: View {
 
     private func startReading() {
         if let position = library.position(series), let chapter = DownloadChapter(series: series, url: position.address) {
-            if position.pageIndex == nil, position.scroll > 0,
+            if position.pageIndex == nil, position.scroll > 0 || position.anchor != nil ||
+                Series.readerPath(position.address).count == 4,
                !library.books.contains(where: { $0.source == chapter.address }) {
                 reader = .web(position.address)
             } else {
@@ -367,12 +458,15 @@ struct SeriesScreen: View {
 struct LibraryScreen: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var shelf = "Reading"
+    @State private var format = "All"
+    @State private var alphabetical = false
 
     private var titles: [Series] {
         let filtered = Series.catalog.filter { series in
-            shelf == "Favorites" ? library.isFavorite(series) : library.list(series)?.rawValue == shelf
+            let matches = shelf == "Favorites" ? library.isFavorite(series) : library.list(series)?.rawValue == shelf
+            return matches && (format == "All" || (format == "Manga") == series.isManga)
         }
-        if shelf == "Reading" {
+        if shelf == "Reading" && !alphabetical {
             return filtered.sorted {
                 (library.position($0)?.updatedAt ?? .distantPast) > (library.position($1)?.updatedAt ?? .distantPast)
             }
@@ -392,6 +486,22 @@ struct LibraryScreen: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
             .padding(.top, 4)
+            HStack {
+                Picker("Format", selection: $format) {
+                    ForEach(["All", "Manga", "Comics"], id: \.self) { Text($0) }
+                }
+                .pickerStyle(.segmented)
+                if shelf == "Reading" {
+                    Button { alphabetical.toggle() } label: {
+                        Image(systemName: "arrow.up.arrow.down").frame(minWidth: 44, minHeight: 44)
+                    }
+                    .accessibilityLabel(alphabetical ? "Sort by last opened" : "Sort by title")
+                }
+            }
+            .padding(.horizontal, 12)
+            if library.syncError {
+                Text("Library changes couldn’t sync.").font(.footnote).foregroundStyle(.secondary)
+            }
             if titles.isEmpty {
                 Spacer()
                 Text("Nothing in this list yet.").foregroundStyle(.secondary)
@@ -406,6 +516,12 @@ struct LibraryScreen: View {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(series.title).font(.headline)
                                 Text(series.category).font(.caption).foregroundStyle(.secondary)
+                                if shelf == "Reading", let position = library.position(series),
+                                   let index = position.pageIndex, let total = position.totalPages,
+                                   (0..<total).contains(index) {
+                                    ProgressView(value: Double(index + 1), total: Double(total))
+                                        .accessibilityLabel("Page \(index + 1) of \(total)")
+                                }
                             }
                         }
                     }
@@ -434,7 +550,7 @@ struct LibraryScreen: View {
                         .padding(.horizontal, 8)
                         .frame(minHeight: 44)
                         .fixedSize()
-                        .foregroundStyle(shelf == name ? Ink.background : Ink.paper)
+                        .foregroundStyle(shelf == name ? Ink.ink : Ink.text)
                         .background(shelf == name ? Ink.paper : Ink.panel, ignoresSafeAreaEdges: [])
                 }
                 .buttonStyle(.plain)

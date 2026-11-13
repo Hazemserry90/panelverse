@@ -132,6 +132,7 @@ private enum AccountError: LocalizedError {
 @MainActor
 struct AccountScreen: View {
     @EnvironmentObject private var account: AccountStore
+    @EnvironmentObject private var library: LibraryStore
     @Environment(\.dismiss) private var dismiss
     @State private var create = false
     @State private var email = ""
@@ -139,6 +140,7 @@ struct AccountScreen: View {
     @State private var confirmation = ""
     @State private var busy = false
     @State private var message: String?
+    @State private var name = ""
 
     private var address: String { email.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var validEmail: Bool { address.contains("@") && !address.contains(where: \.isWhitespace) }
@@ -155,6 +157,18 @@ struct AccountScreen: View {
                 } else if let signedInEmail = account.email {
                     Section {
                         Text(signedInEmail)
+                        TextField("Display name", text: $name)
+                            .textContentType(.nickname)
+                            .onAppear { name = library.username }
+                            .onChange(of: library.username) { name = $0 }
+                        Button("Save display name") {
+                            let value = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                            perform(failure: "Couldn’t save your display name. Try again.") {
+                                try await library.saveUsername(value)
+                            }
+                        }
+                        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines)
+                            .range(of: #"^[A-Za-z ]{2,60}$"#, options: .regularExpression) == nil)
                         if !account.verified {
                             Text("Verify your email using the link we sent you.")
                             Button("I’ve verified my email") {
@@ -169,6 +183,12 @@ struct AccountScreen: View {
                                     message = "Check your inbox for the verification link."
                                 }
                             }
+                        }
+                    }
+                    Button("Send password reset email") {
+                        perform(failure: "Couldn’t request a reset. Try again.") {
+                            try await account.sendReset(to: signedInEmail)
+                            message = "Check your inbox for the password reset link."
                         }
                     }
                     Button("Sign out", role: .destructive) {
