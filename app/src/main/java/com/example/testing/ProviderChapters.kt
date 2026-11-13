@@ -68,16 +68,28 @@ internal object ProviderChapters {
     fun chapterUrl(series: MangaItem, candidate: String?): HttpUrl? {
         val root = seriesRoot(series)
         val url = candidate?.let(::safeUrl) ?: return null
-        val origin = ReaderLinks.inspect(url.toString()) as? ReaderLinks.Approved ?: return null
+        val origin = ReaderLinks.inspect(candidate) as? ReaderLinks.Approved ?: return null
         val rootOrigin = ReaderLinks.inspect(root.toString()) as? ReaderLinks.Approved ?: return null
+        val segments = url.pathSegments.dropLastWhile { it.isEmpty() }
         if (origin.provider != rootOrigin.provider ||
-            url.pathSegments.size != 3 || url.pathSegments.take(2) != root.pathSegments) return null
-        val segment = url.pathSegments.last()
+            segments.size != 3 || segments.take(2) != root.pathSegments) return null
+        val segment = segments.last()
         val manga = root.pathSegments.first() == "manga"
         val number = entryNumber(segment, manga)?.toDoubleOrNull()
         if (number == null && (manga || segment.length > 80 || !specialIssue.matches(segment))) return null
         if (series.id == "bleachtybw" && (number == null || number !in 480.0..686.0)) return null
-        return url.newBuilder().host(root.host).query(null).fragment(null).build()
+        return url.newBuilder().host(root.host).encodedPath("/" + url.encodedPathSegments.take(3).joinToString("/"))
+            .query(null).fragment(null).build()
+    }
+
+    fun comicIssueUrl(series: MangaItem, candidate: String?): HttpUrl? {
+        val origin = ReaderLinks.inspect(candidate) as? ReaderLinks.Approved ?: return null
+        if (origin.provider != "readcomicsonline.ru") return null
+        val url = candidate?.let(::safeUrl) ?: return null
+        chapterUrl(series, candidate)?.let { return it }
+        val segments = url.encodedPathSegments.dropLastWhile { it.isEmpty() }
+        if (segments.size != 4 || !segments.last().matches(Regex("[1-9][0-9]{0,3}"))) return null
+        return chapterUrl(series, url.newBuilder().encodedPath("/" + segments.take(3).joinToString("/")).build().toString())
     }
 
     private fun entryNumber(segment: String, manga: Boolean): String? =

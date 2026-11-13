@@ -218,5 +218,5 @@
     <string name="pv_browse_download_issues">Browse issues to download</string>
     <string name="pv_download_issue">Download issue</string>
     <string name="pv_open_issue_to_download">Open an issue before downloading.</string>
-    <string name="pv_issue_pages_not_ready">Couldn’t read this issue’s page list. Wait for the pages to load, then try Download issue again.</string>
+    <string name="pv_issue_pages_not_ready">Couldn’t find the full issue. In the site’s reader, switch from Page by page to the all-pages mode, let it load, then tap Download issue again.</string>
 </resources>

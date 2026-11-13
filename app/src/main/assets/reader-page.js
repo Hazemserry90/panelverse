@@ -18,6 +18,10 @@ function (operation, expectedUrl, anchor) {
         const attributes = ['data-background-image', 'data-cfsrc', 'data-lazy-src', 'data-src', 'data-original', 'src'];
         const images = [...document.querySelectorAll('#reader-all img, #all img')];
         if (!images.length || images.length > 1000) return null;
+        const issuePath = location.pathname.split('/').filter(Boolean);
+        const pageRoute = issuePath.length === 4 && /^[1-9][0-9]*$/.test(issuePath[3]);
+        const pageTotal = (document.body?.innerText || '').match(/\bPage\s+[0-9]+\s*\/\s*([0-9]+)\b/i);
+        if ((pageRoute && images.length === 1) || (pageTotal && images.length < Number(pageTotal[1]))) return null;
         const pages = [];
         for (const image of images) {
             const source = attributes.map(name => image.getAttribute(name)).find(value => value && value.trim());

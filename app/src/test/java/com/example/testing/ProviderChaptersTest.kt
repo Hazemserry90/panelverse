@@ -78,4 +78,15 @@ class ProviderChaptersTest {
         assertEquals(listOf("Issue 1", "Issue 2", "Annual #1"), listing.chapters.map { it.title })
         assertNull(ProviderChapters.chapterUrl(comic, "https://readcomicsonline.ru.example/comic/example/issue-1"))
     }
+
+    @Test
+    fun recognizesAnIssueFromItsPageByPageUrl() {
+        val issue = comic.url + "/132"
+        assertEquals(issue, ProviderChapters.comicIssueUrl(comic, "$issue/7/?mode=single#reader")?.toString())
+        assertEquals(issue, ProviderChapters.comicIssueUrl(comic, "$issue/")?.toString())
+        assertNull(ProviderChapters.chapterUrl(comic, "$issue/7"))
+        assertNull(ProviderChapters.comicIssueUrl(comic, "$issue/about"))
+        assertNull(ProviderChapters.comicIssueUrl(comic, "https://readcomicsonline.ru/comic/other/132/7"))
+        assertNull(ProviderChapters.comicIssueUrl(comic, "https://readcomicsonline.ru.example/comic/example/132/7"))
+    }
 }

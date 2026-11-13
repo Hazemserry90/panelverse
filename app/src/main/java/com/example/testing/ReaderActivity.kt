@@ -258,7 +258,7 @@ class ReaderActivity : AppCompatActivity() {
                     }
                     val label = intent.getStringExtra("download_title")
                     if (!automaticDownloadStarted && label != null &&
-                        ProviderChapters.chapterUrl(entry, url)?.toString() == intent.getStringExtra("url")) {
+                        ProviderChapters.comicIssueUrl(entry, url)?.toString() == intent.getStringExtra("url")) {
                         automaticDownloadStarted = true
                         collectComicDownload(entry, label, intent.getBooleanExtra("last_issue", false))
                     }
@@ -382,8 +382,8 @@ class ReaderActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.pv_download_sign_in, Toast.LENGTH_SHORT).show()
             return
         }
-        val url = loadedUrl
-        val canonical = ProviderChapters.chapterUrl(series, url)
+        val url = webView.url
+        val canonical = ProviderChapters.comicIssueUrl(series, url)
         if (url == null || canonical == null || failed) {
             Toast.makeText(this, R.string.pv_open_issue_to_download, Toast.LENGTH_SHORT).show()
             return
@@ -411,7 +411,11 @@ class ReaderActivity : AppCompatActivity() {
         series: MangaItem, chapter: ProviderChapters.Chapter, url: String,
         book: java.io.File, lastIssue: Boolean, dialog: AlertDialog, owner: String, attempts: Int
     ) {
-        if (isFinishing || isDestroyed || loadedUrl != url || preparingDownload !== dialog || !dialog.isShowing) return
+        if (isFinishing || isDestroyed || preparingDownload !== dialog || !dialog.isShowing) return
+        if (webView.url != url) {
+            dialog.dismiss()
+            return
+        }
         if (FirebaseAuth.getInstance().currentUser?.uid != owner) {
             dialog.dismiss()
             Toast.makeText(this, R.string.pv_download_sign_in, Toast.LENGTH_SHORT).show()
@@ -421,7 +425,11 @@ class ReaderActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 if (preparingDownload !== dialog || !dialog.isShowing) return@launch
                 val stored = withContext(Dispatchers.IO) { ComicWebData.rememberPages(applicationContext, book, result) }
-                if (isFinishing || loadedUrl != url || preparingDownload !== dialog || !dialog.isShowing) return@launch
+                if (isFinishing || preparingDownload !== dialog || !dialog.isShowing) return@launch
+                if (webView.url != url) {
+                    dialog.dismiss()
+                    return@launch
+                }
                 when {
                     stored -> {
                         dialog.dismiss()
