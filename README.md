@@ -6,7 +6,7 @@ PanelVerse is an Android and iOS app for browsing manga and comics, keeping a re
 
 | Device | Download | Install |
 | --- | --- | --- |
-| Android 7 or newer | [Download PanelVerse 1.9.1 (.apk)](https://github.com/Hazemserry90/panelverse/releases/download/v1.9.1/PanelVerse-1.9.1-release.apk) | [Install on Android](#install-on-android) |
+| Android 7 or newer | [Download PanelVerse 1.9.4 (.apk)](https://github.com/Hazemserry90/panelverse/releases/download/v1.9.4/PanelVerse-1.9.4-release.apk) | [Install on Android](#install-on-android) |
 | iPhone or iPad with iOS or iPadOS 16 or newer | [Download PanelVerse 0.1.0 beta (.ipa)](https://github.com/Hazemserry90/panelverse/releases/download/ios-v0.1.0-beta.1/PanelVerse-unsigned.6.ipa) | [Install from a computer](#install-on-iphone-or-ipad) |
 
 ### Install on Android
