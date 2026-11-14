@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && (!data.child('loginUsername').exists() || data.child('loginUsername').val() === newData.child('loginUsername').val() || !newData.parent().parent().child('usernames').child(data.child('loginUsername').val()).exists())",
+        "loginUsername": {
+          ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 60 && newData.val().matches(/^[a-z0-9_]+( [a-z0-9_]+)*$/) && newData.parent().parent().parent().child('usernames').child(newData.val()).val() === $uid"
+        }
+      }
+    },
+    "usernames": {
+      "$name": {
+        ".read": "auth != null && (!data.exists() || data.val() === auth.uid)",
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && (newData.val() === auth.uid || (!newData.exists() && newData.parent().parent().child('users').child(auth.uid).child('loginUsername').val() !== $name))))",
+        ".validate": "$name.length >= 2 && $name.length <= 60 && $name.matches(/^[a-z0-9_]+( [a-z0-9_]+)*$/) && newData.parent().parent().child('users').child(auth.uid).child('loginUsername').val() === $name"
+      }
+    }
+  }
+}

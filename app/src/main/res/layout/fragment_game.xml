@@ -58,7 +58,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/input_height"
                 android:background="@drawable/bg_input_field"
-                android:hint="@string/pv_email_address"
+                android:hint="@string/pv_login_identifier"
                 android:textColorHint="@color/text_muted"
                 android:textColor="@color/text_primary"
                 android:textSize="15sp"
@@ -67,7 +67,7 @@
                 android:drawableStart="@drawable/baseline_account_circle_24"
                 android:drawableTint="@color/text_muted"
                 android:drawablePadding="14dp"
-                android:inputType="textEmailAddress"
+                android:inputType="textNoSuggestions"
                 android:autofillHints="emailAddress"
                 android:singleLine="true" />
 

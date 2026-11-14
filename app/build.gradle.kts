@@ -22,8 +22,8 @@ android {
         applicationId = "com.example.testing"
         minSdk = 24
         targetSdk = 34
-        versionCode = 14
-        versionName = "1.9.4"
+        versionCode = 22
+        versionName = "1.9.12"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -80,6 +80,9 @@ dependencies {
     implementation(libs.gif.drawable)
     implementation(libs.coil)
     implementation(libs.firebase.auth)
+    implementation(libs.android.credentials)
+    implementation(libs.android.credential.provider)
+    implementation(libs.google.identity)
     implementation(libs.firebase.database)
     implementation(libs.firebase.inappmessaging)
     // FIX 7: exactly one WorkManager dependency (Kotlin artifact) from the version catalog

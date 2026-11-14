@@ -1,5 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="pv_skip_welcome_animation">Skip welcome animation</string>
+    <string name="pv_google_sign_in">Sign in with Google</string>
+    <string name="pv_google_setup_required">Google sign-in is unavailable in this build. You can still sign in with your email.</string>
+    <string name="pv_google_no_account">No Google account is available. Check Google Play services or sign in with your email.</string>
+    <string name="pv_google_error">Couldn’t sign in with Google. Try again or use your email.</string>
+    <string name="pv_google_account_conflict">This email already uses a different sign-in method. Sign in with your existing method.</string>
+    <string name="pv_login_identifier">Username or email</string>
+    <string name="pv_login_identifier_required">Enter your username or email</string>
+    <string name="pv_login_use_email_first">Use your email if this device doesn’t recognize your username or if you share a name with another account.</string>
+    <string name="pv_profile_edit_name">Choose username</string>
+    <string name="pv_username_claim_failed">Couldn’t save this username. Try another name. If all names fail, username reservations may be unavailable.</string>
+    <string name="pv_profile_progress">Reading progress</string>
+    <string name="pv_profile_titles">Titles opened</string>
+    <string name="pv_profile_recent">Recently read</string>
+    <string name="pv_settings_log_out">Log out</string>
+    <string name="pv_profile_achievements">Achievements</string>
+    <string name="pv_profile_first_read">First read</string>
+    <string name="pv_profile_first_favorite">First favorite</string>
+    <string name="pv_profile_open_library">Open Library</string>
+    <string name="pv_profile_no_name">Reader</string>
+    <string name="pv_profile_name_invalid">Use 2–60 characters. Letters, numbers, underscores, and spaces are allowed.</string>
+    <string name="pv_profile_load_error">Couldn’t load your profile.</string>
+    <string name="pv_profile_clear_message">Clear your reading history on this device?</string>
     <string name="app_name">PanelVerse</string>
 
     <string name="pv">"🤖"</string>

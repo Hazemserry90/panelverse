@@ -38,6 +38,7 @@ class LoginFragment : Fragment() {
 
     private var failedAttempts = 0
     private var isLockedOut = false
+    private var signInInProgress = false
     private var lockoutTimer: CountDownTimer? = null
 
     private lateinit var prefs: SharedPreferences
@@ -86,6 +87,7 @@ class LoginFragment : Fragment() {
         restoreLockoutState()
 
         loginButton.setOnClickListener {
+            if (signInInProgress) return@setOnClickListener
             if (isLockedOut) {
                 Toast.makeText(context, "Too many failed attempts. Please wait.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -139,14 +141,13 @@ class LoginFragment : Fragment() {
     }
 
     private fun attemptLogin() {
-        val email = emailField.text.toString().trim()
+        val identifier = emailField.text.toString().trim()
         val password = passwordField.text.toString().trim()
 
-        if (email.isEmpty()) {
-            emailField.error = "Email is required"; emailField.requestFocus(); return
-        }
-        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            emailField.error = "Enter a valid email address"; emailField.requestFocus(); return
+        if (identifier.isEmpty()) {
+            emailField.error = getString(R.string.pv_login_identifier_required)
+            emailField.requestFocus()
+            return
         }
         if (password.isEmpty()) {
             passwordField.error = "Password is required"; passwordField.requestFocus(); return
@@ -156,6 +157,13 @@ class LoginFragment : Fragment() {
         }
 
         updateAttemptsUI()
+        val context = requireContext().applicationContext
+        val email = if (Patterns.EMAIL_ADDRESS.matcher(identifier).matches()) identifier
+            else UsernameSignIn.emailFor(context, identifier)
+        if (email == null) {
+            showLoginMessage(R.string.pv_login_use_email_first)
+            return
+        }
         val connectivity = requireContext().getSystemService(ConnectivityManager::class.java)
         val network = connectivity?.getNetworkCapabilities(connectivity.activeNetwork)
         if (connectivity != null && network?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) != true) {
@@ -163,7 +171,7 @@ class LoginFragment : Fragment() {
             return
         }
 
-        loginButton.isEnabled = false
+        setSignInEnabled(false)
         loginButton.setText(R.string.pv_logging_in)
         loginButton.postDelayed(showSlowSignIn, SLOW_SIGN_IN_MILLIS)
         auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
@@ -185,6 +193,11 @@ class LoginFragment : Fragment() {
                 failedAttempts = 0
                 clearLockoutPrefs()
                 updateAttemptsUI()
+                SavedLists.account(user.uid).child("loginUsername").get().addOnSuccessListener { name ->
+                    if (auth.currentUser?.uid == user.uid) {
+                        UsernameSignIn.remember(context, user.email, name.value as? String)
+                    }
+                }
                 findNavController().navigate(R.id.action_gameFragment_to_navbarFragment)
             } else {
                 when (val error = task.exception) {
@@ -201,6 +214,12 @@ class LoginFragment : Fragment() {
         }
     }
 
+    private fun setSignInEnabled(enabled: Boolean) {
+        signInInProgress = !enabled
+        loginButton.isEnabled = enabled && !isLockedOut
+        view?.findViewById<View>(R.id.goToSignup)?.isEnabled = enabled
+    }
+
     private fun resendVerification(user: FirebaseUser) {
         val now = System.currentTimeMillis()
         showLoginMessage(R.string.pv_login_verify_email)
@@ -209,7 +228,7 @@ class LoginFragment : Fragment() {
             return
         }
         prefs.edit().putLong(KEY_LAST_VERIFICATION, now).apply()
-        loginButton.isEnabled = false
+        setSignInEnabled(false)
         loginButton.setText(R.string.pv_login_sending_link)
         user.sendEmailVerification().addOnCompleteListener { task ->
             if (auth.currentUser?.uid == user.uid) auth.signOut()
@@ -222,7 +241,7 @@ class LoginFragment : Fragment() {
     }
 
     private fun resetLoginButton() {
-        loginButton.isEnabled = !isLockedOut
+        setSignInEnabled(true)
         loginButton.setText(R.string.pv_login_txt)
     }
 
@@ -280,7 +299,7 @@ class LoginFragment : Fragment() {
                 isLockedOut = false
                 failedAttempts = 0
                 clearLockoutPrefs()
-                loginButton.isEnabled = true
+                loginButton.isEnabled = !signInInProgress
                 lockoutMessage?.visibility = View.GONE
                 attemptsWarning?.visibility = View.GONE
             }

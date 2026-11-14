@@ -6,7 +6,7 @@ PanelVerse is an Android and iOS app for browsing manga and comics, keeping a re
 
 | Device | Download | Install |
 | --- | --- | --- |
-| Android 7 or newer | [Download PanelVerse 1.9.4 (.apk)](https://github.com/Hazemserry90/panelverse/releases/download/v1.9.4/PanelVerse-1.9.4-release.apk) | [Install on Android](#install-on-android) |
+| Android 7 or newer | [Download PanelVerse 1.9.12 (.apk)](https://github.com/Hazemserry90/panelverse/releases/download/v1.9.12/PanelVerse-1.9.12-release.apk) | [Install on Android](#install-on-android) |
 | iPhone or iPad with iOS or iPadOS 16 or newer | [Download PanelVerse 0.2.4 beta (.ipa)](https://github.com/Hazemserry90/panelverse/releases/download/ios-v0.2.4-beta.1/PanelVerse-iOS-0.2.4-beta.ipa) | [Install from a computer](#install-on-iphone-or-ipad) |
 
 ### Install on Android
@@ -119,6 +119,8 @@ For a local Xcode build, put the same plist in `ios/PanelVerse`. Account sign-in
 4. Run **PanelVerse iOS TestFlight**. When Apple finishes processing the upload, add testers from the **TestFlight** tab in App Store Connect. Testers install using the TestFlight invitation. [Apple TestFlight](https://developer.apple.com/testflight/)
 
 ## Content and security
+
+Android username claims use the Realtime Database rules in `database.rules.json`. Compare them with the active project rules and merge any additional project-specific rules before publishing them in **Firebase → Realtime Database → Rules**. The index stores the owning Firebase UID and keeps user records private. Usernames can include letters, numbers, underscores, and spaces. If a valid name fails to save even when it is available, verify that these rules are published on the Europe-West1 Realtime Database configured in the Android app. Existing display names can be reserved from **Profile → Choose username**. Existing accounts can continue to sign in with email or Google.
 
 The online reader opens supported chapters from MangaKatana and Read Comics Online. Availability, chapter layout, and advertising can vary by provider. Cover art belongs to its respective rights holders.
 

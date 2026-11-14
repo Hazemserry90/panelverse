@@ -106,6 +106,7 @@ class MangaAdapter(
         holder.cardClickArea.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
+            SeriesSelectionSound.play(context)
             SeriesActivity.open(context, getItem(pos))
         }
         holder.cardClickArea.setOnLongClickListener {

@@ -321,13 +321,19 @@ class HomeFragment : Fragment() {
                 (series.id != "bleachtybw" || ProviderChapters.chapterUrl(series, progress.url) != null)
             setText(if (canResume) R.string.pv_ink_resume else R.string.pv_ink_open)
             setOnClickListener {
-                if (canResume) SeriesActivity.resume(requireContext(), series)
-                else openSeries(series)
+                if (canResume) {
+                    SeriesSelectionSound.play(requireContext())
+                    SeriesActivity.resume(requireContext(), series)
+                } else openSeries(series)
             }
         }
     }
 
-    private fun openSeries(series: MangaItem) = SeriesActivity.open(requireContext(), series)
+    private fun openSeries(series: MangaItem) {
+        val context = requireContext()
+        SeriesSelectionSound.play(context)
+        SeriesActivity.open(context, series)
+    }
 
     override fun onStart() {
         super.onStart()

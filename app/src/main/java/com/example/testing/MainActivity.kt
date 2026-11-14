@@ -22,6 +22,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SeriesSelectionSound.preload(this)
         setContentView(R.layout.activity_main)
 
         val auth = FirebaseAuth.getInstance()

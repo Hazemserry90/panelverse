@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
@@ -11,39 +10,72 @@
         android:orientation="vertical"
         android:paddingBottom="100dp">
 
-        <!-- ── Header ──────────────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginHorizontal="@dimen/screen_padding_h"
+            android:gravity="center"
+            android:text="@string/pv_my_profile"
+            android:textAppearance="@style/TextAppearance.PanelVerse.Section" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_gradient_header"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:paddingTop="44dp"
-            android:paddingBottom="24dp">
+            android:layout_marginHorizontal="@dimen/screen_padding_h"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
             <TextView
-                android:layout_width="84dp"
-                android:layout_height="84dp"
-                android:text="@string/pv_profile_avatar"
-                android:textSize="40sp"
+                android:id="@+id/profileAvatar"
+                android:layout_width="88dp"
+                android:layout_height="88dp"
                 android:gravity="center"
-                android:background="@drawable/bg_avatar_circle" />
+                android:importantForAccessibility="no"
+                android:background="@drawable/bg_ink_caption"
+                android:textColor="#121212"
+                android:textSize="34sp"
+                android:textStyle="bold" />
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:text="@string/pv_my_profile"
-                android:textAppearance="@style/TextAppearance.PanelVerse.Title" />
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/emailTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/pv_user_example_com"
-                android:textAppearance="@style/TextAppearance.PanelVerse.Caption" />
+                <TextView
+                    android:id="@+id/profileName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.PanelVerse.Title" />
+
+                <TextView
+                    android:id="@+id/emailTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textAppearance="@style/TextAppearance.PanelVerse.Caption" />
+            </LinearLayout>
         </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/profileEditName"
+            style="@style/Widget.PanelVerse.Button.Outlined"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_marginStart="@dimen/screen_padding_h"
+            android:layout_marginTop="12dp"
+            android:text="@string/pv_profile_edit_name" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/screen_padding_h"
+            android:layout_marginTop="20dp"
+            android:text="@string/pv_profile_progress"
+            android:textAppearance="@style/TextAppearance.PanelVerse.Section" />
 
         <!-- ── Stats ───────────────────────────────────────────────────── -->
         <LinearLayout
@@ -79,7 +111,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="@string/pv_favorites"
+                    android:text="@string/pv_library_favorites"
                     android:textAppearance="@style/TextAppearance.PanelVerse.Caption" />
             </LinearLayout>
 
@@ -99,7 +131,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textColor="@color/accent_cyan"
+                    android:textColor="@color/text_primary"
                     android:textSize="32sp"
                     android:textStyle="bold"
                     android:fontFamily="sans-serif-condensed" />
@@ -108,58 +140,53 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="@string/pv_titles_read"
+                    android:text="@string/pv_profile_titles"
                     android:textAppearance="@style/TextAppearance.PanelVerse.Caption" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ── Account info ────────────────────────────────────────────── -->
         <LinearLayout
+            android:id="@+id/profileAchievementsSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/screen_padding_h"
-            android:layout_marginEnd="@dimen/screen_padding_h"
-            android:layout_marginTop="@dimen/space_md"
-            android:orientation="vertical"
-            android:background="@drawable/bg_section_card"
-            android:padding="20dp">
+            android:layout_marginHorizontal="@dimen/screen_padding_h"
+            android:layout_marginTop="22dp"
+            android:visibility="gone"
+            android:orientation="vertical">
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/pv_account_info"
+                android:text="@string/pv_profile_achievements"
                 android:textAppearance="@style/TextAppearance.PanelVerse.Section" />
 
-            <EditText
-                android:id="@+id/usernameEditText"
+            <TextView
+                android:id="@+id/profileAchievements"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
-                android:layout_marginTop="@dimen/space_sm"
-                android:hint="@string/pv_enter_your_username"
-                android:textColorHint="@color/text_muted"
-                android:textColor="@color/text_primary"
-                android:background="@drawable/bg_input_field"
-                android:paddingStart="@dimen/space_md"
-                android:paddingEnd="@dimen/space_md"
-                android:autofillHints="username"
-                android:inputType="text" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/saveButton"
-                style="@style/Widget.PanelVerse.Button"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/button_height"
-                android:layout_marginTop="@dimen/space_md"
-                android:text="@string/pv_save_changes" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/logoutButton"
-                style="@style/Widget.PanelVerse.Button.Outlined"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/button_height"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="@string/pv_logout" />
+                android:lineSpacingExtra="6dp"
+                android:background="@drawable/bg_section_card"
+                android:padding="16dp"
+                android:textAppearance="@style/TextAppearance.PanelVerse.Caption" />
         </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/screen_padding_h"
+            android:layout_marginTop="22dp"
+            android:text="@string/pv_library"
+            android:textAppearance="@style/TextAppearance.PanelVerse.Section" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/profileLibrary"
+            style="@style/Widget.PanelVerse.Button.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_marginHorizontal="@dimen/screen_padding_h"
+            android:text="@string/pv_profile_open_library" />
 
         <!-- ── Recently read ───────────────────────────────────────────── -->
         <LinearLayout
@@ -182,7 +209,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/pv_recently_read"
+                    android:text="@string/pv_profile_recent"
                     android:textAppearance="@style/TextAppearance.PanelVerse.Section" />
 
                 <TextView

@@ -16,8 +16,14 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
+import androidx.credentials.exceptions.ClearCredentialException
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment() {
 
@@ -31,7 +37,7 @@ class SettingsFragment : Fragment() {
     private lateinit var switchNotifications: SwitchCompat
     private lateinit var versionText: TextView
     private lateinit var clearHistoryRow: LinearLayout
-    private lateinit var changePasswordRow: LinearLayout
+    private lateinit var changePasswordButton: View
     private lateinit var rateAppRow: LinearLayout
 
     private lateinit var prefs: SharedPreferences
@@ -71,8 +77,24 @@ class SettingsFragment : Fragment() {
         switchNotifications  = view.findViewById(R.id.switchNotifications)
         versionText          = view.findViewById(R.id.versionText)
         clearHistoryRow      = view.findViewById(R.id.clearHistoryRow)
-        changePasswordRow    = view.findViewById(R.id.changePasswordRow)
+        changePasswordButton = view.findViewById(R.id.changePasswordButton)
         rateAppRow           = view.findViewById(R.id.rateAppRow)
+        view.findViewById<View>(R.id.logoutButton).setOnClickListener {
+            FirebaseAuth.getInstance().signOut()
+            val host = requireActivity()
+            host.lifecycleScope.launch {
+                try {
+                    CredentialManager.create(host).clearCredentialState(ClearCredentialStateRequest())
+                } catch (_: ClearCredentialException) {
+                    // Firebase has already ended the app session.
+                }
+            }
+            ReadingHistoryManager.clearHistory(requireContext())
+            val cookies = android.webkit.CookieManager.getInstance()
+            cookies.removeAllCookies { cookies.flush() }
+            android.webkit.WebStorage.getInstance().deleteAllData()
+            findNavController().navigate(R.id.action_navbarFragment_to_startFragment)
+        }
 
         initPreferences()
         loadSavedStates()
@@ -132,7 +154,7 @@ class SettingsFragment : Fragment() {
         clearHistoryRow.setOnClickListener { showClearHistoryDialog() }
 
         // Change Password
-        changePasswordRow.setOnClickListener { sendPasswordResetEmail() }
+        changePasswordButton.setOnClickListener { sendPasswordResetEmail() }
 
         // Rate App
         rateAppRow.setOnClickListener { openPlayStore() }

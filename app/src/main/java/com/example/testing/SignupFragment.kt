@@ -12,11 +12,9 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 
 class SignupFragment : Fragment() {
-
-    // Simple POJO for Firebase serialisation
-    data class User(val username: String = "", val email: String = "")
 
     companion object {
         // 🔒 Strong password policy
@@ -25,6 +23,7 @@ class SignupFragment : Fragment() {
     }
 
     private lateinit var auth: FirebaseAuth
+    private var pendingUser: FirebaseUser? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -64,8 +63,8 @@ class SignupFragment : Fragment() {
             val confirm  = confirmField.text.toString().trim()
 
             // ── Validation ─────────────────────────────────────────────────
-            if (!username.matches(Regex("^[A-Za-z ]{2,60}$"))) {
-                usernameField.error = "Name must contain 2–60 letters or spaces"
+            if (Usernames.key(username) == null) {
+                usernameField.error = getString(R.string.pv_profile_name_invalid)
                 usernameField.requestFocus(); return@setOnClickListener
             }
             if (email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
@@ -85,7 +84,12 @@ class SignupFragment : Fragment() {
 
             signupBtn.isEnabled = false
             signupBtn.text = getString(R.string.pv_creating_account)
-            signUpUser(username, email, password, signupBtn)
+            val pending = pendingUser
+            if (pending != null && auth.currentUser?.uid == pending.uid) {
+                saveUsername(pending, username, usernameField, signupBtn)
+            } else {
+                signUpUser(username, email, password, usernameField, signupBtn)
+            }
         }
 
         // FIX: make the "Already have an account? Login" link actually work.
@@ -98,57 +102,63 @@ class SignupFragment : Fragment() {
         username: String,
         email: String,
         password: String,
-        btn: MaterialButton
+        usernameField: EditText,
+        button: MaterialButton
     ) {
+        val root = view ?: return
         auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val user = task.result?.user
-                if (user != null) {
-                    // 🔒 Save profile keyed by UID
-                    FirebaseHelper.ref("users")
-                        .child(user.uid)
-                        .setValue(User(username, email))
-                        .addOnFailureListener {
-                            if (view == null) return@addOnFailureListener
-                            Toast.makeText(
-                                context,
-                                "Profile save failed. You may re-save from Profile.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+            val user = if (task.isSuccessful) task.result?.user else null
+            if (view !== root) {
+                if (user != null && auth.currentUser?.uid == user.uid) auth.signOut()
+                return@addOnCompleteListener
+            }
+            if (user == null) {
+                resetButton(button)
+                Toast.makeText(root.context, "Registration failed. Please try again.", Toast.LENGTH_SHORT).show()
+                return@addOnCompleteListener
+            }
+            pendingUser = user
+            root.findViewById<EditText>(R.id.email).isEnabled = false
+            root.findViewById<EditText>(R.id.password).isEnabled = false
+            root.findViewById<EditText>(R.id.confirmPassword).isEnabled = false
+            saveUsername(user, username, usernameField, button)
+        }
+    }
 
-                    // 📧 Send email verification before navigating away
-                    user.sendEmailVerification().addOnCompleteListener emailVerification@{ verification ->
-                        if (auth.currentUser?.uid == user.uid) auth.signOut()
-                        if (view == null) return@emailVerification
-                        btn.isEnabled = true
-                        btn.text = getString(R.string.pv_sign_up)
-                        Toast.makeText(
-                            context,
-                            if (verification.isSuccessful) "Account created. Check your email to verify it."
-                            else "Account created. Sign in to request another verification email.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        findNavController().navigate(R.id.action_endgameFragment_to_gameFragment)
-                    }
-                } else {
-                    if (view == null) return@addOnCompleteListener
-                    btn.isEnabled = true
-                    btn.text = getString(R.string.pv_sign_up)
-                    Toast.makeText(context, "Account created! Please log in.", Toast.LENGTH_SHORT).show()
-                    findNavController().navigate(R.id.action_endgameFragment_to_gameFragment)
-                }
-            } else {
-                if (view == null) return@addOnCompleteListener
-                btn.isEnabled = true
-                btn.text = getString(R.string.pv_sign_up)
-                Toast.makeText(context, "Registration failed. Please try again.", Toast.LENGTH_SHORT).show()
+    private fun saveUsername(user: FirebaseUser, username: String, usernameField: EditText, button: MaterialButton) {
+        val root = view ?: return
+        Usernames.claim(user.uid, username, user.email).addOnCompleteListener { claim ->
+            if (view !== root || auth.currentUser?.uid != user.uid) return@addOnCompleteListener
+            if (!claim.isSuccessful) {
+                resetButton(button)
+                usernameField.error = getString(R.string.pv_username_claim_failed)
+                usernameField.requestFocus()
+                return@addOnCompleteListener
+            }
+
+            user.sendEmailVerification().addOnCompleteListener verifyEmail@{ verification ->
+                if (auth.currentUser?.uid == user.uid) auth.signOut()
+                pendingUser = null
+                if (view !== root) return@verifyEmail
+                Toast.makeText(
+                    root.context,
+                    if (verification.isSuccessful) "Account created. Check your email to verify it."
+                    else "Account created. Sign in to request another verification email.",
+                    Toast.LENGTH_LONG
+                ).show()
+                findNavController().navigate(R.id.action_endgameFragment_to_gameFragment)
             }
         }
     }
 
+    private fun resetButton(button: MaterialButton) {
+        button.isEnabled = true
+        button.setText(R.string.pv_sign_up)
+    }
+
     override fun onDestroyView() {
+        pendingUser?.let { if (auth.currentUser?.uid == it.uid) auth.signOut() }
+        pendingUser = null
         super.onDestroyView()
-        // FLAG_SECURE is cleared in onPause() — Bug 13 fix.
     }
 }

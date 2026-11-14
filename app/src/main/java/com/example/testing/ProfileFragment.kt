@@ -1,18 +1,16 @@
 package com.example.testing
 
-import android.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -24,7 +22,12 @@ class ProfileFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
 
     private lateinit var emailTextView: TextView
-    private lateinit var usernameEditText: EditText
+    private lateinit var profileName: TextView
+    private lateinit var avatar: TextView
+    private lateinit var achievements: TextView
+    private var displayName = ""
+    private var favoriteTotal = 0
+    private var historyTotal = 0
 
     // Stats views
     private lateinit var favoritesCount: TextView
@@ -41,34 +44,14 @@ class ProfileFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View = inflater.inflate(R.layout.fragment_profile, container, false)
 
-    // BUG 13 FIX: Apply FLAG_SECURE in onResume/onPause (not onCreateView/onDestroyView)
-    // so it is guaranteed to be cleared even if the app crashes mid-session.
-    // FIX 2: NavbarFragment switches tabs with show()/hide(), so a hidden ProfileFragment
-    // stays RESUMED and onPause() never fires on a tab switch — FLAG_SECURE then leaked
-    // app-wide (screenshots blocked everywhere). Only apply it while actually visible.
     override fun onResume() {
         super.onResume()
-        if (!isHidden) {
-            applySecureFlag()
-            refreshReadingData()
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        clearSecureFlag()
+        if (!isHidden) refreshReadingData()
     }
 
     override fun onHiddenChanged(hidden: Boolean) {
         super.onHiddenChanged(hidden)
-        if (hidden) {
-            clearSecureFlag()
-        } else {
-            applySecureFlag()
-            // FIX: the tab host caches fragments with show()/hide(), so onViewCreated runs
-            // only once. Refresh history/stats every time Profile becomes visible.
-            refreshReadingData()
-        }
+        if (!hidden) refreshReadingData()
     }
 
     /** Reloads the "Recently Read" list and the stat counters. */
@@ -78,24 +61,15 @@ class ProfileFragment : Fragment() {
         loadStats()
     }
 
-    private fun applySecureFlag() {
-        activity?.window?.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE
-        )
-    }
-
-    private fun clearSecureFlag() {
-        activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         auth = FirebaseAuth.getInstance()
 
         emailTextView   = view.findViewById(R.id.emailTextView)
-        usernameEditText = view.findViewById(R.id.usernameEditText)
+        profileName = view.findViewById(R.id.profileName)
+        avatar = view.findViewById(R.id.profileAvatar)
+        achievements = view.findViewById(R.id.profileAchievements)
         favoritesCount  = view.findViewById(R.id.favoritesCount)
         historyCount    = view.findViewById(R.id.historyCount)
         clearHistoryBtn = view.findViewById(R.id.clearHistoryBtn)
@@ -103,47 +77,19 @@ class ProfileFragment : Fragment() {
         historyContainer = view.findViewById(R.id.historyContainer)
 
         loadUserProfile()
-        loadStats()
-        loadReadingHistory()
+        refreshReadingData()
 
-        // ── Save username ─────────────────────────────────────────────────
-        view.findViewById<View>(R.id.saveButton).setOnClickListener {
-            val newUsername = usernameEditText.text.toString().trim()
-            if (newUsername.isEmpty()) {
-                usernameEditText.error = "Username cannot be empty"
-                usernameEditText.requestFocus()
-                return@setOnClickListener
-            }
-            if (!newUsername.matches(Regex("^[A-Za-z ]{2,60}$"))) {
-                usernameEditText.error = "Name must contain 2–60 letters or spaces"
-                usernameEditText.requestFocus()
-                return@setOnClickListener
-            }
-            updateUsername(newUsername)
+        view.findViewById<View>(R.id.profileLibrary).setOnClickListener {
+            (parentFragment as? NavbarFragment)?.switchToTab(R.id.favorites)
         }
-
-        // ── Logout ─────────────────────────────────────────────────────────
-        view.findViewById<View>(R.id.logoutButton).setOnClickListener {
-            auth.signOut()
-            ReadingHistoryManager.clearHistory(requireContext())
-            val cookies = android.webkit.CookieManager.getInstance()
-            cookies.removeAllCookies { cookies.flush() }
-            android.webkit.WebStorage.getInstance().deleteAllData()
-            Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
-            // BUG 12 FIX: Use findNavController() directly instead of
-            // Navigation.findNavController(activity, R.id.fragmentContainerView) which
-            // throws IllegalStateException because fragmentContainerView is in MainActivity's
-            // layout, not inside ProfileFragment's view hierarchy.
-            // 🔒 Navigate back to start screen and clear back stack so user
-            //    cannot press back into the authenticated area.
-            findNavController().navigate(R.id.action_navbarFragment_to_startFragment)
-        }
+        view.findViewById<View>(R.id.profileEditName).setOnClickListener { editName() }
+        view.findViewById<View>(R.id.profileEditName).isEnabled = auth.currentUser != null
 
         // ── Clear reading history ──────────────────────────────────────────
         clearHistoryBtn.setOnClickListener {
             AlertDialog.Builder(requireContext())
                 .setTitle("Clear History")
-                .setMessage("Are you sure you want to clear your entire reading history?")
+                .setMessage(R.string.pv_profile_clear_message)
                 .setPositiveButton("Clear") { _, _ ->
                     ReadingHistoryManager.clearHistory(requireContext())
                     loadReadingHistory()
@@ -157,52 +103,75 @@ class ProfileFragment : Fragment() {
     // ── Profile ────────────────────────────────────────────────────────────
 
     private fun loadUserProfile() {
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
-            Toast.makeText(context, "No user logged in", Toast.LENGTH_SHORT).show()
-            return
+        val root = view ?: return
+        val user = auth.currentUser
+        emailTextView.text = user?.email.orEmpty()
+        showName("")
+        if (user == null) return
+
+        SavedLists.account(user.uid).get().addOnCompleteListener { task ->
+            if (view !== root || auth.currentUser?.uid != user.uid) return@addOnCompleteListener
+            if (task.isSuccessful) {
+                val reserved = task.result.child("loginUsername").value as? String
+                val display = task.result.child("username").value as? String
+                val name = display?.takeIf { Usernames.key(it) == reserved } ?: reserved ?: display
+                showName(name.orEmpty())
+                UsernameSignIn.remember(root.context, user.email, reserved)
+            } else {
+                Toast.makeText(root.context, R.string.pv_profile_load_error, Toast.LENGTH_SHORT).show()
+            }
         }
-
-        emailTextView.text = currentUser.email
-
-        // 🔒 Fetch only this user's own data using their UID
-        FirebaseHelper.ref("users")
-            .child(currentUser.uid)
-            .child("username")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    // FIX 3: guard async callback against fragment death.
-                    if (!isAdded) return
-                    if (snapshot.exists()) {
-                        usernameEditText.setText(snapshot.getValue(String::class.java))
-                    } else {
-                        usernameEditText.hint = "Enter your username"
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    if (!isAdded) return
-                    Toast.makeText(context, "Could not load profile data.", Toast.LENGTH_SHORT).show()
-                }
-            })
     }
 
-    private fun updateUsername(username: String) {
-        val currentUser = auth.currentUser ?: return
+    private fun showName(name: String) {
+        displayName = name
+        val label = name.ifBlank { getString(R.string.pv_profile_no_name) }
+        profileName.text = label
+        avatar.text = label.split(Regex("\\s+")).take(2).joinToString("") { it.take(1) }.uppercase(Locale.ROOT)
+    }
 
-        FirebaseHelper.ref("users")
-            .child(currentUser.uid)
-            .child("username")
-            .setValue(username)
-            .addOnCompleteListener { task ->
-                // FIX 3: guard async callback against fragment death.
-                if (!isAdded) return@addOnCompleteListener
-                if (task.isSuccessful) {
-                    Toast.makeText(context, "Username updated successfully", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Failed to update username. Try again.", Toast.LENGTH_SHORT).show()
+    private fun editName() {
+        val input = EditText(requireContext()).apply {
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS
+            isSingleLine = true
+            setText(displayName)
+            setSelection(length())
+        }
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle(R.string.pv_profile_edit_name)
+            .setView(input)
+            .setPositiveButton(R.string.pv_save_changes, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val name = input.text.toString().trim()
+            if (Usernames.key(name) == null) {
+                input.error = getString(R.string.pv_profile_name_invalid)
+                return@setOnClickListener
+            }
+            val button = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            button.isEnabled = false
+            updateUsername(name) { success ->
+                if (success) dialog.dismiss()
+                else if (dialog.isShowing) {
+                    button.isEnabled = true
+                    input.error = getString(R.string.pv_username_claim_failed)
                 }
             }
+        }
+    }
+
+    private fun updateUsername(username: String, result: (Boolean) -> Unit) {
+        val root = view ?: return
+        val user = auth.currentUser ?: return
+        Usernames.claim(user.uid, username).addOnCompleteListener { task ->
+            if (view !== root || auth.currentUser?.uid != user.uid) return@addOnCompleteListener
+            if (task.isSuccessful) {
+                UsernameSignIn.remember(root.context, user.email, username)
+                showName(username)
+            }
+            result(task.isSuccessful)
+        }
     }
 
     // ── Stats ──────────────────────────────────────────────────────────────
@@ -210,7 +179,10 @@ class ProfileFragment : Fragment() {
     private fun loadStats() {
         // History count from SharedPreferences
         val history = ReadingHistoryManager.getHistory(requireContext())
-        historyCount.text = String.format(Locale.getDefault(), "%d", history.size)
+        historyTotal = history.size
+        historyCount.text = String.format(Locale.getDefault(), "%d", historyTotal)
+        loadAchievements()
+        val root = view ?: return
 
         // Favorites count from Firebase
         val currentUser = auth.currentUser
@@ -224,15 +196,27 @@ class ProfileFragment : Fragment() {
             .child("favorites")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    if (!isAdded) return
-                    favoritesCount.text = String.format(Locale.getDefault(), "%d", snapshot.childrenCount)
+                    if (view !== root || auth.currentUser?.uid != currentUser.uid) return
+                    favoriteTotal = snapshot.children.count { it.value == true }
+                    favoritesCount.text = String.format(Locale.getDefault(), "%d", favoriteTotal)
+                    loadAchievements()
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    if (!isAdded) return
-                    favoritesCount.text = "0"
+                    if (view !== root || auth.currentUser?.uid != currentUser.uid) return
+                    favoritesCount.text = "—"
                 }
             })
+    }
+
+    private fun loadAchievements() {
+        val unlocked = buildList {
+            if (historyTotal > 0) add(getString(R.string.pv_profile_first_read))
+            if (favoriteTotal > 0) add(getString(R.string.pv_profile_first_favorite))
+        }
+        achievements.text = unlocked.joinToString("\n")
+        view?.findViewById<View>(R.id.profileAchievementsSection)?.visibility =
+            if (unlocked.isEmpty()) View.GONE else View.VISIBLE
     }
 
     // ── Reading history ────────────────────────────────────────────────────
@@ -276,5 +260,4 @@ class ProfileFragment : Fragment() {
         return Math.round(dp * density)
     }
 
-    // FLAG_SECURE is cleared in onPause()/onHiddenChanged() — see above (Bug 13 + FIX 2).
 }

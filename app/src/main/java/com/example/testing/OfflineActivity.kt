@@ -100,6 +100,7 @@ class OfflineActivity : AppCompatActivity() {
                 isAllCaps = false
                 setOnClickListener {
                     if (!busy) {
+                        SeriesSelectionSound.play(this@OfflineActivity)
                         val download = library.downloadedChapter(book)
                         if (download == null) openBook(book)
                         else NativeReaderActivity.open(this@OfflineActivity, download.series, download.chapter, download.last)
