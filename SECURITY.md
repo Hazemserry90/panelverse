@@ -13,7 +13,7 @@ Please allow reasonable time for a fix before any public disclosure.
 
 | Version | Supported |
 |---|---|
-| `master` (latest) | ✅ |
+| `main` (latest) | ✅ |
 | Older commits | ❌ |
 
 ## Security measures in place
