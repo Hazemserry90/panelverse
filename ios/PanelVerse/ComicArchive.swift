@@ -115,32 +115,39 @@ enum ComicArchive {
         let session = pageSession()
         defer { session.invalidateAndCancel() }
         var downloaded = 0
-        for start in stride(from: 0, to: pages.count, by: 3) {
-            try Task.checkCancellation()
-            let limit = min(pageLimit, archiveLimit - downloaded)
-            guard limit > 0 else { throw ImportError.tooLarge }
-            try await withThrowingTaskGroup(of: (Int, Data).self) { group in
-                for index in start..<min(start + 3, pages.count) {
-                    let url = pages[index]
-                    group.addTask {
-                        (index, try await remotePage(url, chapter: chapter, limit: limit, session: session))
-                    }
+        try await withThrowingTaskGroup(of: (Int, Data).self) { group in
+            var pending = pages.enumerated().makeIterator()
+            var completed = 0
+            for _ in 0..<min(3, pages.count) {
+                try Task.checkCancellation()
+                guard let (index, url) = pending.next() else { break }
+                group.addTask { (index, try await remotePage(url, chapter: chapter, limit: pageLimit, session: session)) }
+            }
+            while let (index, data) = try await group.next() {
+                try Task.checkCancellation()
+                guard data.count <= archiveLimit - downloaded else { throw ImportError.tooLarge }
+                downloaded += data.count
+                if let (nextIndex, url) = pending.next() {
+                    let limit = min(pageLimit, archiveLimit - downloaded)
+                    guard limit > 0 else { throw ImportError.tooLarge }
+                    group.addTask { (nextIndex, try await remotePage(url, chapter: chapter, limit: limit, session: session)) }
                 }
-                var completed = start
-                for try await (index, data) in group {
+                let ext = try remoteImage(data).fileExtension
+                let name = String(format: "%04d", index + 1) + "." + ext
+                try archive.addEntry(with: name, type: .file, uncompressedSize: Int64(data.count)) { offset, count in
                     try Task.checkCancellation()
-                    guard data.count <= archiveLimit - downloaded else { throw ImportError.tooLarge }
-                    let ext = try remoteImage(data).fileExtension
-                    let name = String(format: "%04d", index + 1) + "." + ext
-                    let pageFile = staging.appendingPathComponent(name)
-                    try data.write(to: pageFile)
-                    try archive.addEntry(with: name, fileURL: pageFile)
-                    try FileManager.default.removeItem(at: pageFile)
-                    let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
-                    guard let size = attributes[.size] as? NSNumber,
-                          size.int64Value <= Int64(archiveLimit) else { throw ImportError.tooLarge }
-                    downloaded += data.count
-                    completed += 1
+                    let start = Int(offset)
+                    guard start >= 0, start <= data.count, count >= 0, count <= data.count - start else {
+                        throw ChapterDownloadError.invalidPage
+                    }
+                    return data.subdata(in: start..<(start + count))
+                }
+                let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
+                guard let size = attributes[.size] as? NSNumber,
+                      size.int64Value <= Int64(archiveLimit) else { throw ImportError.tooLarge }
+                let previous = completed * 99 / pages.count
+                completed += 1
+                if completed * 99 / pages.count > previous {
                     await progress(completed * 99 / pages.count)
                 }
             }

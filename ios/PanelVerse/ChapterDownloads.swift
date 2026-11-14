@@ -361,6 +361,7 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
 final class ChapterDownloads: ObservableObject {
     @Published private(set) var active: DownloadChapter?
     @Published private(set) var percent = 0
+    @Published private(set) var preparing = false
     @Published private(set) var cancelling = false
     @Published private(set) var failure: String?
     @Published private(set) var completed: OfflineBook?
@@ -389,12 +390,14 @@ final class ChapterDownloads: ObservableObject {
         failure = nil
         completed = nil
         percent = 0
+        preparing = true
         active = chapter
         UserDefaults.standard.set(true, forKey: Self.interruptedKey)
         task = Task {
             defer {
                 UserDefaults.standard.removeObject(forKey: Self.interruptedKey)
                 active = nil
+                preparing = false
                 cancelling = false
                 task = nil
             }
@@ -402,6 +405,7 @@ final class ChapterDownloads: ObservableObject {
                 let pageURLs = try await pages()
                 try Task.checkCancellation()
                 guard account.currentUserID == userID else { return }
+                preparing = false
                 let book = try await ComicArchive.download(chapter, pages: pageURLs, finalEntry: finalEntry || chapter.finalEntry) { [weak self] percent in
                     self?.percent = percent
                 }
@@ -441,9 +445,14 @@ struct DownloadStatus: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(active.title).font(.caption).lineLimit(2)
                 HStack {
-                    ProgressView(value: Double(downloads.percent), total: 100)
-                        .accessibilityLabel("Download progress")
-                    Text("\(downloads.percent)%").font(.caption.monospacedDigit())
+                    if downloads.preparing {
+                        ProgressView().accessibilityLabel("Preparing download")
+                        Text("Finding pages…").font(.caption)
+                    } else {
+                        ProgressView(value: Double(downloads.percent), total: 100)
+                            .accessibilityLabel("Download progress")
+                        Text("\(downloads.percent)%").font(.caption.monospacedDigit())
+                    }
                     Button(downloads.cancelling ? "Cancelling…" : "Cancel") { downloads.cancel() }
                         .disabled(downloads.cancelling)
                 }

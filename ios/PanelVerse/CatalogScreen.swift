@@ -340,7 +340,8 @@ struct SeriesScreen: View {
         let book = library.books.first { $0.source == chapter.address }
         let active = downloads.active?.address == chapter.address
         let label: LocalizedStringKey = book != nil ? "Open offline" :
-            (active ? (downloads.cancelling ? "Cancelling…" : "Cancel \(downloads.percent)%") :
+            (active ? (downloads.cancelling ? "Cancelling…" :
+                (downloads.preparing ? "Cancel" : "Cancel \(downloads.percent)%")) :
                 (account.userID == nil ? "Sign in" : "Download"))
         return HStack(spacing: 8) {
             Button {
