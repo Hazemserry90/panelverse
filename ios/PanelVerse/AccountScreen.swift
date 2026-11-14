@@ -153,7 +153,7 @@ struct AccountScreen: View {
         NavigationStack {
             Form {
                 if !account.available {
-                    Text("Account services haven’t been configured for this build.")
+                    Text("Install an account-enabled build to sign in or create an account.")
                 } else if let signedInEmail = account.email {
                     Section {
                         Text(signedInEmail)

@@ -18,8 +18,6 @@ struct PanelVerseApp: App {
                     TabView {
                         NavigationStack { CatalogScreen() }
                             .tabItem { Label("Home", systemImage: "house") }
-                        NavigationStack { CatalogScreen(discover: true) }
-                            .tabItem { Label("Discover", systemImage: "safari") }
                         NavigationStack { LibraryScreen() }
                             .tabItem { Label("Library", systemImage: "books.vertical") }
                         NavigationStack { OfflineScreen() }

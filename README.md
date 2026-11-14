@@ -38,7 +38,7 @@ Free installs need to be refreshed every seven days. Use the same Apple Account 
 
 ## Features
 
-- **Home and Discover** — Browse Manga, Marvel, DC, Invincible, and Comics. Search by title or find recommendations based on your interests and reading history.
+- **Home** — Browse Manga, Marvel, DC, Invincible, and Comics, or search by title. Android also has a Discover tab for recommendations.
 - **Series and Library** — Browse manga chapters and comic issues, share a series link, and manage Favorites separately from Reading, Want to Read, and Finished. Use **Want to Read** on a series page or long-press a title in your Library to move it between reading lists.
 - **Reader** — Open supported chapters in the native reader with page controls, a scrubber, and right-to-left, left-to-right, or vertical reading. Pinch or double-tap to zoom, then drag to move around the page. You can also use **Reader options → Zoom in** or **Zoom out**. The web reader remains available from the series and reader controls when a provider chapter needs it.
 - **Ad filtering** — Use **Reader options → Block ads** to block known ad hosts and hide supported overlays. Provider ads can change, so some may still appear.
@@ -91,7 +91,7 @@ Release builds use your local `keystore.properties`, or an external file selecte
 #### Free testing on your own iPhone or iPad
 
 1. Add the PanelVerse repository to a personal Codemagic account. Its free plan includes 500 macOS M2 build minutes per month. [Codemagic pricing](https://docs.codemagic.io/billing/pricing/)
-2. Start a build on the branch containing this workflow and choose **PanelVerse iOS personal device**. When it succeeds, download **PanelVerse-unsigned.ipa** under **Artifacts**.
+2. For sign-in and sign-up, follow **Test iPhone sign-in and sign-up** below. For guest testing, choose **PanelVerse iOS personal device** and download **PanelVerse-unsigned.ipa** under **Artifacts**.
 3. Install Sideloadly on your Windows PC, connect and unlock your device, and tap **Trust** if prompted. Select the IPA and your device in Sideloadly, then click **Start** and follow the prompts to sign it with your free Apple Account. [Sideloadly download and setup](https://sideloadly.io/)
 4. If prompted on iOS 16, enable **Settings → Privacy & Security → Developer Mode**, restart, and confirm. If iOS asks you to trust the developer, go to **Settings → General → VPN & Device Management** and trust your Apple Account under **Developer App**. Open PanelVerse. [Apple Developer Mode guide](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device)
 
@@ -107,7 +107,7 @@ Free personal signing expires after seven days. Use the same Apple Account to re
    ```
 
 3. In Codemagic, open the PanelVerse app’s **Environment variables**. Create a secret variable named `PANELVERSE_FIREBASE_IOS_PLIST` in the group `panelverse_firebase_ios`, then paste the clipboard value. Run **PanelVerse iOS personal device with accounts**.
-4. Install the resulting IPA with the same sideloading account as before and keep the same app bundle identifier in Sideloadly. Tap the person icon on **Home** to sign in or create an account.
+4. Download **PanelVerse-accounts-unsigned.ipa** under **Artifacts**. Install it with the same sideloading account as before and keep the app bundle identifier `com.hazemserry.panelverse` in Sideloadly. Tap the person icon on **Home** to sign in or create an account.
 
 For a local Xcode build, put the same plist in `ios/PanelVerse`. Account sign-in uses Firebase email and password. Signed-in Favorites and reading lists use the same Realtime Database paths as Android. Guest lists, reading positions, and offline downloads stay on the device. If you use a different Firebase project, update the database URL in `ios/PanelVerse/LibraryStore.swift` and `FirebaseHelper.kt`.
 

@@ -3,7 +3,6 @@ import UIKit
 
 @MainActor
 struct CatalogScreen: View {
-    var discover = false
     @EnvironmentObject private var library: LibraryStore
     @EnvironmentObject private var account: AccountStore
     @State private var search = ""
@@ -21,7 +20,7 @@ struct CatalogScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if !discover && search.isEmpty, let recent = library.lastRead {
+                if search.isEmpty, let recent = library.lastRead {
                     NavigationLink {
                         SeriesScreen(series: recent)
                     } label: {
@@ -45,7 +44,7 @@ struct CatalogScreen: View {
                         .overlay { Rectangle().strokeBorder(.white.opacity(0.16)) }
                     }
                     .buttonStyle(.plain)
-                } else if !discover && search.isEmpty, let first = Series.catalog.first {
+                } else if search.isEmpty, let first = Series.catalog.first {
                     NavigationLink { SeriesScreen(series: first) } label: {
                         HStack(spacing: 14) {
                             Cover(series: first).frame(width: 64, height: 92)
@@ -64,27 +63,6 @@ struct CatalogScreen: View {
                         .overlay { Rectangle().strokeBorder(.white.opacity(0.16)) }
                     }
                     .buttonStyle(.plain)
-                }
-                if discover && search.isEmpty && category == "All", let recent = library.lastRead {
-                    let related = Series.catalog.filter { $0.category == recent.category && $0.id != recent.id }
-                    if !related.isEmpty {
-                        Text("Because you read \(recent.title)").font(.headline)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(alignment: .top, spacing: 10) {
-                                ForEach(Array(related.prefix(6))) { series in
-                                    NavigationLink { SeriesScreen(series: series) } label: {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Cover(series: series).frame(width: 84, height: 126)
-                                            Text(series.title).font(.caption.bold()).lineLimit(2)
-                                            Text("Same category: \(recent.category)").font(.caption2).foregroundStyle(.secondary)
-                                        }
-                                        .frame(width: 92, alignment: .leading)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                    }
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -127,20 +105,18 @@ struct CatalogScreen: View {
                             }
                             .buttonStyle(.plain)
                             .overlay(alignment: .topTrailing) {
-                                if !discover {
-                                    Button { library.toggleFavorite(series) } label: {
-                                        Image(systemName: library.isFavorite(series) ? "star.fill" : "star")
-                                            .font(.caption.weight(.semibold))
-                                            .frame(width: 25, height: 25)
-                                            .foregroundStyle(Ink.ink)
-                                            .background(Ink.paper)
-                                            .frame(width: 44, height: 44, alignment: .topTrailing)
-                                            .contentShape(Rectangle())
-                                    }
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel(library.isFavorite(series) ? "Remove from Favorites" : "Add to Favorites")
-                                    .accessibilityHint(series.title)
+                                Button { library.toggleFavorite(series) } label: {
+                                    Image(systemName: library.isFavorite(series) ? "star.fill" : "star")
+                                        .font(.caption.weight(.semibold))
+                                        .frame(width: 25, height: 25)
+                                        .foregroundStyle(Ink.ink)
+                                        .background(Ink.paper)
+                                        .frame(width: 44, height: 44, alignment: .topTrailing)
+                                        .contentShape(Rectangle())
                                 }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(library.isFavorite(series) ? "Remove from Favorites" : "Add to Favorites")
+                                .accessibilityHint(series.title)
                             }
                         }
                     }
@@ -149,20 +125,18 @@ struct CatalogScreen: View {
             .padding(16)
         }
         .background(Ink.background)
-        .navigationTitle(discover ? "Discover" : "PANELVERSE")
+        .navigationTitle("PANELVERSE")
         .searchable(text: $search, prompt: "Search manga & comics")
         .toolbar {
-            if !discover {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { surprise = results.randomElement() } label: {
-                        Label("Surprise me", systemImage: "die.face.5")
-                    }
-                    .disabled(results.isEmpty)
+            ToolbarItem(placement: .primaryAction) {
+                Button { surprise = results.randomElement() } label: {
+                    Label("Surprise me", systemImage: "die.face.5")
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    Button { showAccount = true } label: {
-                        Label(account.email == nil ? "Sign in" : "Account", systemImage: "person.crop.circle")
-                    }
+                .disabled(results.isEmpty)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button { showAccount = true } label: {
+                    Label(account.email == nil ? "Sign in" : "Account", systemImage: "person.crop.circle")
                 }
             }
         }
