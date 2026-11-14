@@ -64,7 +64,7 @@ enum ChapterDownloadError: LocalizedError {
         case .providerResponse: return "The provider couldn’t send a page image. Check your connection and try again."
         case .invalidPage: return "A page isn’t a readable JPG, PNG, or WebP image."
         case .providerHTTP(let status): return "The reading source returned HTTP \(status). Try the web reader."
-        case .verificationRequired: return "The comic provider requires browser verification. Use Open in browser to read on the provider’s site."
+        case .verificationRequired: return "The comic site requires browser verification. Open in browser to continue."
         case .interrupted: return "The download was interrupted. Start it again from the series."
         }
     }
@@ -182,7 +182,7 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
 
     static func chapters(for series: Series) async throws -> [DownloadChapter] {
         let loader = ProviderReaderLoader(series: series, address: series.chapterListAddress)
-        return try await loader.extract(failure: .listUnavailable) { view, url in
+        return try await loader.extract(failure: .listUnavailable, timeout: series.isManga ? 18 : 9) { view, url in
             try await readChapters(for: series, from: view, at: url)
         }
     }
@@ -272,7 +272,7 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
         return pages
     }
 
-    private func extract<Result>(failure: ChapterDownloadError,
+    private func extract<Result>(failure: ChapterDownloadError, timeout: TimeInterval = 18,
                                  read: (WKWebView, URL) async throws -> Result?) async throws -> Result {
         guard accepts(address) else { throw failure }
         let configuration = WKWebViewConfiguration()
@@ -288,9 +288,10 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
             view.navigationDelegate = nil
             view.stopLoading()
         }
-        view.load(URLRequest(url: address, timeoutInterval: 18))
+        view.load(URLRequest(url: address, timeoutInterval: timeout))
+        let deadline = ProcessInfo.processInfo.systemUptime + timeout
         var attemptsAfterLoad = 0
-        for _ in 0..<60 {
+        while ProcessInfo.processInfo.systemUptime < deadline {
             try Task.checkCancellation()
             if let navigationError { throw navigationError }
             if committed, let url = view.url, accepts(url) {

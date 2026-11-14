@@ -182,6 +182,7 @@ struct SeriesScreen: View {
     @State private var loadingChapters = true
     @State private var chapterListFailed = false
     @State private var chapterListError = ""
+    @State private var issuesRequireVerification = false
     @State private var retryList = 0
 
     private enum ReaderDestination: Identifiable {
@@ -286,9 +287,12 @@ struct SeriesScreen: View {
             case .offline(let book):
                 NativeReaderScreen(book: book, series: series,
                                    finalEntry: chapters.contains { $0.address == book.source && $0.finalEntry })
-            case .web(let address): OnlineReaderScreen(series: series, initialAddress: address)
+            case .web(let address):
+                OnlineReaderScreen(series: series, initialAddress: address,
+                                   requiresBrowserVerification: issuesRequireVerification)
             case .download(let chapter):
-                OnlineReaderScreen(series: series, initialAddress: chapter.address, automaticDownload: chapter)
+                OnlineReaderScreen(series: series, initialAddress: chapter.address, automaticDownload: chapter,
+                                   requiresBrowserVerification: issuesRequireVerification)
             }
         }
         .sheet(isPresented: $showAccount) { AccountScreen() }
@@ -385,12 +389,18 @@ struct SeriesScreen: View {
             let entries = try await ProviderReaderLoader.chapters(for: series)
             try Task.checkCancellation()
             chapters = entries
+            issuesRequireVerification = false
             loadingChapters = false
         } catch {
             guard !Task.isCancelled else { return }
+            if case .verificationRequired? = error as? ChapterDownloadError {
+                issuesRequireVerification = true
+            } else {
+                issuesRequireVerification = false
+            }
             chapterListError = (error as? ChapterDownloadError)?.localizedDescription ??
                 ChapterDownloadError.listUnavailable.localizedDescription
-            chapterListFailed = chapters.isEmpty
+            chapterListFailed = chapters.isEmpty || issuesRequireVerification
             loadingChapters = false
         }
     }
@@ -406,6 +416,8 @@ struct SeriesScreen: View {
     private func open(_ chapter: DownloadChapter) {
         if let book = library.books.first(where: { $0.source == chapter.address }) {
             reader = .offline(book)
+        } else if issuesRequireVerification {
+            reader = .web(chapter.address)
         } else {
             reader = .native(chapter)
         }

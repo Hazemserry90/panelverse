@@ -8,6 +8,7 @@ struct OnlineReaderScreen: View {
     let series: Series
     var initialAddress: URL?
     var automaticDownload: DownloadChapter?
+    var requiresBrowserVerification = false
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var library: LibraryStore
     @EnvironmentObject private var downloads: ChapterDownloads
@@ -17,6 +18,7 @@ struct OnlineReaderScreen: View {
     @State private var error = false
     @State private var errorMessage = "This page couldn’t load."
     @State private var verificationAddress: URL?
+    @State private var stalledAddress: URL?
     @State private var loading = true
     @State private var reload = 0
     @State private var zoom: CGFloat = 1
@@ -41,12 +43,18 @@ struct OnlineReaderScreen: View {
         NavigationStack {
             ZStack {
                 Ink.background.ignoresSafeArea()
-                if ready {
+                if ready && stalledAddress == nil {
                     ProviderWebView(series: series, entryAddress: entryAddress, initial: start, zoom: zoom, blockAds: blockAds,
                                     loading: $loading, failed: $error,
                                     onDownloadSource: updateDownloadSource,
                                     onError: { errorMessage = $0 },
-                                    onVerification: { verificationAddress = $0 },
+                                    onVerification: { address in
+                                        if let address {
+                                            if verificationAddress == nil { verificationAddress = address }
+                                        } else {
+                                            verificationAddress = nil
+                                        }
+                                    },
                                     onApproximateRestore: { restoreNotice = true }) {
                         if automaticDownload == nil {
                             library.remember(series, address: $0, scroll: $1, anchor: $2)
@@ -55,16 +63,21 @@ struct OnlineReaderScreen: View {
                     .id(reload)
                     .opacity(error ? 0 : 1)
                 }
-                if error {
+                if let address = stalledAddress {
+                    VStack(spacing: 16) {
+                        Text("The comic site requires browser verification.")
+                            .font(.headline)
+                        Text("Open the same comic in your browser to continue the site’s verification.")
+                            .foregroundStyle(.secondary)
+                        ProviderBrowserLink(series: series, address: address)
+                        Button("Retry in PanelVerse") { retry() }.buttonStyle(.bordered)
+                    }
+                    .multilineTextAlignment(.center)
+                    .padding()
+                } else if error {
                     VStack(spacing: 16) {
                         Text(errorMessage).font(.headline).multilineTextAlignment(.center)
-                        Button("Retry") {
-                            error = false
-                            loading = true
-                            verificationAddress = nil
-                            start = savedPosition
-                            reload += 1
-                        }
+                        Button("Retry") { retry() }
                         .buttonStyle(.borderedProminent)
                         if series.provider == "readcomicsonline.ru" {
                             ProviderBrowserLink(series: series, address: start?.address ?? entryAddress)
@@ -87,7 +100,7 @@ struct OnlineReaderScreen: View {
                         .padding(10)
                         .background(Ink.panel)
                     }
-                    if let address = verificationAddress, !error {
+                    if let address = verificationAddress, !error, stalledAddress == nil {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("If verification stays on this screen, open the comic in your browser.")
                                 .font(.subheadline)
@@ -96,7 +109,7 @@ struct OnlineReaderScreen: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                         .background(Ink.panel)
-                    } else if !loading && !error {
+                    } else if !loading && !error && stalledAddress == nil {
                         downloadControls
                     }
                 }
@@ -128,10 +141,36 @@ struct OnlineReaderScreen: View {
         .onAppear {
             if !ready {
                 start = savedPosition
+                if requiresBrowserVerification { stalledAddress = start?.address ?? entryAddress }
                 ready = true
             }
         }
+        .task(id: verificationAddress) {
+            guard let address = verificationAddress else { return }
+            do {
+                try await Task.sleep(nanoseconds: 8_000_000_000)
+                try Task.checkCancellation()
+                if verificationAddress == address, !error {
+                    stalledAddress = address
+                    downloadSource = nil
+                }
+            } catch { return }
+        }
         .sheet(isPresented: $showAccount) { AccountScreen() }
+    }
+
+    private func retry() {
+        let address = stalledAddress ?? verificationAddress
+        start = address.map { target in
+            if let saved = savedPosition, saved.address == target { return saved }
+            return ReadingPosition(address: target, scroll: 0, updatedAt: .now)
+        } ?? savedPosition
+        error = false
+        loading = true
+        verificationAddress = nil
+        stalledAddress = nil
+        attemptedAutomaticDownload = false
+        reload += 1
     }
 
     private func updateDownloadSource(_ source: ReaderDownloadSource?) {
@@ -259,7 +298,7 @@ private struct ProviderWebView: UIViewRepresentable {
                     if let rules { view.configuration.userContentController.add(rules) }
                 }
                 self.appliedAdFilter = self.parent.blockAds
-                view.load(URLRequest(url: address))
+                view.load(URLRequest(url: address, timeoutInterval: 15))
             }
         }
 
@@ -387,6 +426,10 @@ private struct ProviderWebView: UIViewRepresentable {
                 restored = true
                 saveIfReady()
             }
+        }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            fail()
         }
 
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {

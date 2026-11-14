@@ -79,7 +79,7 @@ function (operation, expectedUrl, anchor) {
         const comicProvider = /^(?:www\.)?readcomicsonline\.ru$/.test(location.hostname);
         const sponsorPrompt = /\bvisit\s+(?:https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s]*)?\s+to learn more\b/i;
         const vpnPrompt = /\bvpn\s+toggle\s*[-–—]?\s*recommended\b|\bthe best in online security\b/i;
-        const chapterPath = /^\/(?:manga|comic)\/[^/]+\/[^/]+\/?$/.test(location.pathname);
+        const chapterPath = /^\/(?:manga\/[^/]+\/[^/]+|comic\/[^/]+\/[^/]+(?:\/[1-9][0-9]{0,3})?)\/?$/.test(location.pathname);
         const readerImages = '#imgs [id^="page"] img,#reader-all img,#all img';
         const pageControls = 'form,select,nav,header,footer';
         const protectedContent = 'img, picture, video, canvas, form, select, nav, header, footer';
