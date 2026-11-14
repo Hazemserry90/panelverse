@@ -178,24 +178,28 @@ struct OnlineReaderScreen: View {
         guard let source, let automaticDownload, source.chapter.address == automaticDownload.address,
               !attemptedAutomaticDownload, account.currentUserID != nil else { return }
         attemptedAutomaticDownload = true
-        downloads.start(automaticDownload, library: library, account: account, pages: source.readyPages)
+        downloads.start(source, series: series, library: library, account: account, chapter: automaticDownload)
     }
 
     @ViewBuilder private var downloadControls: some View {
         if let source = downloadSource {
             let saved = library.books.contains { $0.source == source.chapter.address }
             let guest = account.userID == nil
+            let queued = downloads.isQueued(source.chapter)
+            let active = downloads.active?.address == source.chapter.address
             let label = saved ? "Available offline" :
-                (guest ? "Sign in to download" : (series.isManga ? "Download chapter" : "Download issue"))
+                (active ? "Downloading…" : (queued ? "Queued · Cancel" :
+                    (guest ? "Sign in to download" : (series.isManga ? "Download chapter" : "Download issue"))))
             Button {
-                if account.currentUserID == nil { showAccount = true }
-                else { downloads.start(source, library: library, account: account) }
+                if queued { downloads.cancelQueued(source.chapter) }
+                else if account.currentUserID == nil { showAccount = true }
+                else { downloads.start(source, series: series, library: library, account: account) }
             } label: {
                 Label(label, systemImage: saved ? "checkmark.circle" : (guest ? "lock" : "arrow.down.circle"))
                     .frame(maxWidth: .infinity, minHeight: 36)
             }
             .buttonStyle(.bordered)
-            .disabled(saved || (!guest && downloads.active != nil))
+            .disabled(saved || active)
             .padding(8)
             .background(Ink.background)
         }

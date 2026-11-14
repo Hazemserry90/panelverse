@@ -42,7 +42,7 @@ struct PanelVerseApp: App {
             .preferredColorScheme(darkMode ? .dark : .light)
             .task { account.start() }
             .onChange(of: account.userID) { uid in
-                downloads.cancel()
+                downloads.cancelAll()
                 library.connectAccount(uid)
             }
         }

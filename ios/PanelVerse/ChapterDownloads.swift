@@ -65,7 +65,7 @@ enum ChapterDownloadError: LocalizedError {
         case .invalidPage: return "A page isn’t a readable JPG, PNG, or WebP image."
         case .providerHTTP(let status): return "The reading source returned HTTP \(status). Try the web reader."
         case .verificationRequired: return "The comic site requires browser verification. Open in browser to continue."
-        case .interrupted: return "The download was interrupted. Start it again from the series."
+        case .interrupted: return "Downloads were interrupted. Add the unfinished chapters or issues again from the series."
         }
     }
 }
@@ -359,7 +359,16 @@ final class ProviderReaderLoader: NSObject, WKNavigationDelegate {
 
 @MainActor
 final class ChapterDownloads: ObservableObject {
+    private struct Request {
+        let chapter: DownloadChapter
+        let owner: String
+        let finalEntry: Bool
+        let pages: @MainActor () async throws -> [URL]
+    }
+
     @Published private(set) var active: DownloadChapter?
+    @Published private var queue: [Request] = []
+    var queued: [DownloadChapter] { queue.map(\.chapter) }
     @Published private(set) var percent = 0
     @Published private(set) var preparing = false
     @Published private(set) var cancelling = false
@@ -375,8 +384,19 @@ final class ChapterDownloads: ObservableObject {
         }
     }
 
-    func start(_ source: ReaderDownloadSource, library: LibraryStore, account: AccountStore) {
-        start(source.chapter, library: library, account: account, pages: source.readyPages)
+    func isQueued(_ chapter: DownloadChapter) -> Bool {
+        queue.contains { $0.chapter.address == chapter.address }
+    }
+
+    func start(_ source: ReaderDownloadSource, series: Series, library: LibraryStore, account: AccountStore,
+               chapter explicitChapter: DownloadChapter? = nil) {
+        let chapter = explicitChapter ?? source.chapter
+        start(chapter, library: library, account: account) {
+            do { return try await source.readyPages() }
+            catch ChapterDownloadError.pagesUnavailable {
+                return try await ProviderReaderLoader.pages(for: series, chapter: chapter)
+            }
+        }
     }
 
     func start(_ chapter: DownloadChapter, library: LibraryStore, account: AccountStore,
@@ -386,9 +406,23 @@ final class ChapterDownloads: ObservableObject {
             failure = "Sign in to download chapters and issues."
             return
         }
-        guard active == nil, !library.books.contains(where: { $0.source == chapter.address }) else { return }
-        failure = nil
+        guard active?.address != chapter.address, !isQueued(chapter),
+              !library.books.contains(where: { $0.source == chapter.address }) else { return }
+        if active == nil { failure = nil }
         completed = nil
+        queue.append(Request(chapter: chapter, owner: userID, finalEntry: finalEntry, pages: pages))
+        startNext(library: library, account: account)
+    }
+
+    private func startNext(library: LibraryStore, account: AccountStore) {
+        guard task == nil else { return }
+        queue.removeAll { request in
+            request.owner != account.currentUserID ||
+                library.books.contains { $0.source == request.chapter.address }
+        }
+        guard !queue.isEmpty else { return }
+        let request = queue.removeFirst()
+        let chapter = request.chapter
         percent = 0
         preparing = true
         active = chapter
@@ -400,16 +434,18 @@ final class ChapterDownloads: ObservableObject {
                 preparing = false
                 cancelling = false
                 task = nil
+                startNext(library: library, account: account)
             }
             do {
-                let pageURLs = try await pages()
                 try Task.checkCancellation()
-                guard account.currentUserID == userID else { return }
+                let pageURLs = try await request.pages()
+                try Task.checkCancellation()
+                guard account.currentUserID == request.owner else { return }
                 preparing = false
-                let book = try await ComicArchive.download(chapter, pages: pageURLs, finalEntry: finalEntry || chapter.finalEntry) { [weak self] percent in
+                let book = try await ComicArchive.download(chapter, pages: pageURLs, finalEntry: request.finalEntry || chapter.finalEntry) { [weak self] percent in
                     self?.percent = percent
                 }
-                if Task.isCancelled || account.currentUserID != userID {
+                if Task.isCancelled || account.currentUserID != request.owner {
                     try ComicArchive.remove(book)
                 } else {
                     library.add(book)
@@ -417,11 +453,11 @@ final class ChapterDownloads: ObservableObject {
                     completed = book
                 }
             } catch let error as ChapterDownloadError {
-                if !Task.isCancelled { failure = error.localizedDescription }
+                if !Task.isCancelled { failure = "\(chapter.title) — \(error.localizedDescription)" }
             } catch let error as ComicArchive.ImportError {
-                if !Task.isCancelled { failure = error.localizedDescription }
+                if !Task.isCancelled { failure = "\(chapter.title) — \(error.localizedDescription)" }
             } catch {
-                if !Task.isCancelled { failure = "The download didn’t finish. Try again from the reader." }
+                if !Task.isCancelled { failure = "\(chapter.title) didn’t download. Try again from the reader." }
             }
         }
     }
@@ -430,6 +466,15 @@ final class ChapterDownloads: ObservableObject {
         guard let task else { return }
         cancelling = true
         task.cancel()
+    }
+
+    func cancelQueued(_ chapter: DownloadChapter) {
+        queue.removeAll { $0.chapter.address == chapter.address }
+    }
+
+    func cancelAll() {
+        queue.removeAll()
+        cancel()
     }
 
     func dismissFailure() { failure = nil }
@@ -455,6 +500,9 @@ struct DownloadStatus: View {
                     }
                     Button(downloads.cancelling ? "Cancelling…" : "Cancel") { downloads.cancel() }
                         .disabled(downloads.cancelling)
+                }
+                if !downloads.queued.isEmpty {
+                    Text("\(downloads.queued.count) queued").font(.caption).foregroundStyle(.secondary)
                 }
             }
             .padding(12)

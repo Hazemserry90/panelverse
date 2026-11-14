@@ -339,10 +339,11 @@ struct SeriesScreen: View {
     private func chapterRow(_ chapter: DownloadChapter) -> some View {
         let book = library.books.first { $0.source == chapter.address }
         let active = downloads.active?.address == chapter.address
+        let queued = downloads.isQueued(chapter)
         let label: LocalizedStringKey = book != nil ? "Open offline" :
             (active ? (downloads.cancelling ? "Cancelling…" :
                 (downloads.preparing ? "Cancel" : "Cancel \(downloads.percent)%")) :
-                (account.userID == nil ? "Sign in" : "Download"))
+                (queued ? "Queued · Cancel" : (account.userID == nil ? "Sign in" : "Download")))
         return HStack(spacing: 8) {
             Button {
                 open(chapter)
@@ -355,8 +356,8 @@ struct SeriesScreen: View {
             Button {
                 if let book { reader = .offline(book) }
                 else if active { downloads.cancel() }
+                else if queued { downloads.cancelQueued(chapter) }
                 else if account.currentUserID == nil { showAccount = true }
-                else if !series.isManga { reader = .download(chapter) }
                 else {
                     downloads.start(chapter, library: library, account: account) {
                         try await ProviderReaderLoader.pages(for: series, chapter: chapter)
@@ -367,6 +368,7 @@ struct SeriesScreen: View {
                     // Reserve the widest action so progress and completion never rewrap the title.
                     Text("Cancel 100%").hidden()
                     Text("Cancelling…").hidden()
+                    Text("Queued · Cancel").hidden()
                     Text("Open offline").hidden()
                     Text("Download").hidden()
                     Text("Sign in").hidden()
@@ -376,9 +378,19 @@ struct SeriesScreen: View {
                 .fixedSize(horizontal: true, vertical: false)
             }
             .buttonStyle(ReaderPillButtonStyle())
-            .disabled(active ? downloads.cancelling : (book == nil && account.userID != nil && downloads.active != nil))
+            .disabled(active && downloads.cancelling)
             .accessibilityLabel(Text(label))
             .accessibilityHint(Text(chapter.entryTitle))
+            if !series.isManga && account.userID != nil {
+                Menu {
+                    Button("Download in web reader") { reader = .download(chapter) }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .disabled(book != nil || active || queued)
+                .accessibilityLabel("More options for \(chapter.entryTitle)")
+            }
         }
     }
 

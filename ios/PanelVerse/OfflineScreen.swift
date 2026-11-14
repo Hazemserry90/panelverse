@@ -15,6 +15,19 @@ struct OfflineScreen: View {
             if downloads.active != nil || downloads.failure != nil || downloads.completed != nil {
                 DownloadStatus()
             }
+            if !downloads.queued.isEmpty {
+                Section("Queued downloads") {
+                    ForEach(downloads.queued) { chapter in
+                        HStack {
+                            Text(chapter.title).font(.subheadline)
+                            Spacer()
+                            Button("Cancel") { downloads.cancelQueued(chapter) }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("Cancel \(chapter.title)")
+                        }
+                    }
+                }
+            }
             ForEach(library.books) { book in
                 NavigationLink {
                     OfflineReader(book: book)
@@ -35,7 +48,8 @@ struct OfflineScreen: View {
         }
         .scrollContentBackground(.hidden)
         .overlay {
-            if library.books.isEmpty && downloads.active == nil && downloads.failure == nil && downloads.completed == nil {
+            if library.books.isEmpty && downloads.active == nil && downloads.queued.isEmpty &&
+                downloads.failure == nil && downloads.completed == nil {
                 VStack(spacing: 12) {
                     Image(systemName: "books.vertical").font(.largeTitle)
                     Text("Download a chapter or issue from a series, or import a CBZ from Files.")
@@ -243,7 +257,7 @@ struct NativeReaderScreen: View {
                             downloads.start(chapter, library: library, account: account, finalEntry: finalEntry) { pages }
                         }
                     }
-                    .disabled(account.userID != nil && downloads.active != nil)
+                    .disabled(downloads.active?.address == chapter.address || downloads.isQueued(chapter))
                 }
             }
         } label: {
