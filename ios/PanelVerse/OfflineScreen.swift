@@ -121,6 +121,7 @@ struct NativeReaderScreen: View {
     @State private var urls: [URL] = []
     @State private var page: Int?
     @State private var image: UIImage?
+    @State private var displayedPage: Int?
     @State private var pageCache = ReaderPageCache()
     @State private var chapterFailed = false
     @State private var chapterFailureMessage = ""
@@ -181,14 +182,21 @@ struct NativeReaderScreen: View {
                 Ink.background
                 if direction == .vertical, let page, pageCount > 0 {
                     verticalPages(initialPage: page)
-                } else if let image, let page {
+                } else if let image, let displayedPage, !pageFailed {
                     ZoomablePage(image: image, zoomCommand: zoomCommand, onTap: tapPage,
                                  onSwipe: { swipe in
                         let forward = (swipe == .left) != rightToLeft
                         movePage(by: forward ? 1 : -1)
                     })
-                        .id(page)
-                        .accessibilityLabel("Page \(page + 1) of \(pageCount)")
+                        .id(displayedPage)
+                        .accessibilityLabel("Page \(displayedPage + 1) of \(pageCount)")
+                    if displayedPage != page {
+                        ProgressView()
+                            .padding(12)
+                            .background(.black.opacity(0.8), in: Capsule())
+                            .accessibilityLabel("Loading page \((page ?? 0) + 1)")
+                            .allowsHitTesting(false)
+                    }
                 } else if chapterFailed || pageFailed {
                     VStack(spacing: 12) {
                         Text(chapterFailed ? chapterFailureMessage : "Page \((page ?? 0) + 1) couldn’t load.")
@@ -224,7 +232,7 @@ struct NativeReaderScreen: View {
         .task(id: "\(page ?? -1):\(pageRetry):\(direction.rawValue)") {
             if direction != .vertical { await loadPage() }
         }
-        .onDisappear { pageCache.keepOnly([]) }
+        .onDisappear { pageCache.keepOnly() }
         .sheet(isPresented: $showAccount) { AccountScreen() }
         .fullScreenCover(isPresented: $showWeb) {
             if let series { OnlineReaderScreen(series: series, initialAddress: chapter?.address) }
@@ -401,35 +409,41 @@ struct NativeReaderScreen: View {
     }
 
     private func loadPage() async {
-        guard let page else { return }
-        image = nil
+        guard let page, (0..<pageCount).contains(page) else { return }
         pageFailed = false
-        do {
-            if book == nil, urls.indices.contains(page) {
-                let nearby = Array(urls[page..<min(page + 3, urls.count)])
-                pageCache.keepOnly(nearby)
+        let last = min(page + 2, pageCount - 1)
+        pageCache.keepOnly(max(0, page - 1)...last)
+        let current = requestPage(at: page)
+        if page < last {
+            for index in (page + 1)...last {
+                requestPage(at: index, priority: .utility)
             }
-            let decoded = try await image(at: page)
+        }
+        do {
+            let decoded = try await current.value
             guard !Task.isCancelled, self.page == page else { return }
+            displayedPage = page
             image = decoded
             remember(page)
-            if book == nil, let chapter {
-                for url in urls.dropFirst(page + 1).prefix(2) {
-                    pageCache.prefetch(url, chapter: chapter)
-                }
-            }
         } catch {
-            if !Task.isCancelled { pageFailed = true }
+            if !Task.isCancelled, self.page == page { pageFailed = true }
         }
     }
 
     private func image(at index: Int) async throws -> UIImage {
-        if let book {
-            let task = Task.detached(priority: .userInitiated) { try ComicArchive.image(for: book, page: index) }
-            return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
+        try await requestPage(at: index).value
+    }
+
+    @discardableResult
+    private func requestPage(at index: Int, priority: TaskPriority = .userInitiated) -> Task<UIImage, Error> {
+        let book = book
+        let chapter = chapter
+        let url = urls.indices.contains(index) ? urls[index] : nil
+        return pageCache.request(index, priority: priority) {
+            if let book { return try ComicArchive.image(for: book, page: index) }
+            guard let chapter, let url else { throw ChapterDownloadError.pagesUnavailable }
+            return try await ComicArchive.onlineImage(url, chapter: chapter)
         }
-        guard let chapter, urls.indices.contains(index) else { throw ChapterDownloadError.pagesUnavailable }
-        return try await pageCache.load(urls[index], chapter: chapter)
     }
 
     private func remember(_ index: Int) {
@@ -492,42 +506,36 @@ private struct VerticalReaderPage: View {
 
 @MainActor
 private final class ReaderPageCache {
-    private let cache = NSCache<NSURL, UIImage>()
-    private var requests: [URL: Task<UIImage, Error>] = [:]
+    private let cache = NSCache<NSNumber, UIImage>()
+    private var requests: [Int: Task<UIImage, Error>] = [:]
 
     init() {
         cache.countLimit = 4
         cache.totalCostLimit = 48 * 1024 * 1024
     }
 
-    func load(_ url: URL, chapter: DownloadChapter) async throws -> UIImage {
-        if let image = cache.object(forKey: url as NSURL) { return image }
-        return try await request(url, chapter: chapter, priority: .userInitiated).value
-    }
-
-    func prefetch(_ url: URL, chapter: DownloadChapter) {
-        guard cache.object(forKey: url as NSURL) == nil else { return }
-        _ = request(url, chapter: chapter, priority: .utility)
-    }
-
-    func keepOnly(_ urls: [URL]) {
-        for url in Array(requests.keys) where !urls.contains(url) {
-            requests.removeValue(forKey: url)?.cancel()
+    func keepOnly(_ indices: ClosedRange<Int>? = nil) {
+        for index in Array(requests.keys) where indices?.contains(index) != true {
+            requests.removeValue(forKey: index)?.cancel()
         }
     }
 
-    private func request(_ url: URL, chapter: DownloadChapter, priority: TaskPriority) -> Task<UIImage, Error> {
-        if let existing = requests[url] { return existing }
+    func request(_ index: Int, priority: TaskPriority, load: @escaping @Sendable () async throws -> UIImage) -> Task<UIImage, Error> {
+        let key = NSNumber(value: index)
+        if let image = cache.object(forKey: key) { return Task { image } }
+        if let existing = requests[index] { return existing }
         let task = Task(priority: priority) { [weak self] in
-            defer { if !Task.isCancelled { self?.requests.removeValue(forKey: url) } }
-            let image = try await ComicArchive.onlineImage(url, chapter: chapter)
+            defer { if !Task.isCancelled { self?.requests.removeValue(forKey: index) } }
+            let worker = Task.detached(priority: priority, operation: load)
+            let image = try await withTaskCancellationHandler(operation: { try await worker.value },
+                                                              onCancel: { worker.cancel() })
             try Task.checkCancellation()
             if let bitmap = image.cgImage {
-                self?.cache.setObject(image, forKey: url as NSURL, cost: bitmap.bytesPerRow * bitmap.height)
+                self?.cache.setObject(image, forKey: key, cost: bitmap.bytesPerRow * bitmap.height)
             }
             return image
         }
-        requests[url] = task
+        requests[index] = task
         return task
     }
 }

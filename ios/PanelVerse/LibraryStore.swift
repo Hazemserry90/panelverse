@@ -140,6 +140,7 @@ final class LibraryStore: ObservableObject {
         var positions: [String: ReadingPosition] = [:]
         var books: [OfflineBook] = []
         var offlinePositions: [UUID: Int] = [:]
+        var hiddenFromReading: Set<String>? = nil
     }
 
     @Published private var record: Record
@@ -167,7 +168,10 @@ final class LibraryStore: ObservableObject {
         (accountReference == nil ? record.favorites : accountFavorites).contains(series.id)
     }
     func list(_ series: Series) -> ReadingList? {
-        accountReference == nil ? record.lists[series.id] : accountLists[series.id]
+        let explicit = accountReference == nil ? record.lists[series.id] : accountLists[series.id]
+        if let explicit { return explicit }
+        guard record.hiddenFromReading?.contains(series.id) != true, record.positions[series.id] != nil else { return nil }
+        return .reading
     }
     func position(_ series: Series) -> ReadingPosition? { record.positions[series.id] }
 
@@ -234,7 +238,15 @@ final class LibraryStore: ObservableObject {
     }
 
     func move(_ series: Series, to list: ReadingList?) {
+        if list == nil {
+            var hidden = record.hiddenFromReading ?? []
+            hidden.insert(series.id)
+            record.hiddenFromReading = hidden
+        } else {
+            record.hiddenFromReading?.remove(series.id)
+        }
         if let ref = accountReference {
+            persist()
             write(list?.databaseValue, to: ref.child("savedLists").child(series.id))
             return
         }
@@ -245,6 +257,7 @@ final class LibraryStore: ObservableObject {
     func remember(_ series: Series, address: URL, scroll: Double, pageIndex: Int? = nil,
                   anchor: ReaderPageAnchor? = nil, totalPages: Int? = nil, finished: Bool = false) {
         guard series.isChapter(address), scroll.isFinite else { return }
+        record.hiddenFromReading?.remove(series.id)
         record.positions[series.id] = ReadingPosition(address: address, scroll: max(0, scroll), updatedAt: .now,
                                                       pageIndex: pageIndex, anchor: anchor, totalPages: totalPages)
         if accountReference != nil {
